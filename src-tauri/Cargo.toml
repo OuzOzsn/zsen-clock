@@ -1,0 +1,52 @@
+[workspace]
+members = ["cekirdek"]
+
+[package]
+name = "zsenclock"
+version = "0.1.0"
+description = "Zsen Clock - masaustu hatirlatici ve takvim uygulamasi"
+edition = "2021"
+license = "MIT"
+rust-version = "1.82"
+
+[lib]
+name = "zsenclock_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+cekirdek = { path = "cekirdek" }
+
+tauri = { version = "2", features = ["protocol-asset", "tray-icon", "image-png"] }
+tauri-plugin-opener = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-notification = "2"
+tauri-plugin-autostart = "2"
+tauri-plugin-single-instance = "2"
+
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+chrono = { version = "0.4", features = ["serde"] }
+
+# Widget'ta Windows 11 Acrylic malzemesi. Desteklenmeyen surumlerde
+# cagri sessizce basarisiz olur, pencere duz zeminle calisir.
+[target.'cfg(windows)'.dependencies]
+# Masaustu kisayolu icin IShellLink (COM), gercek masaustu yolu ve
+# cercevesiz pencerelerde Windows 11 yuvarlak kosesi (DWM).
+windows = { version = "0.62", features = [
+  "Win32_Foundation",
+  "Win32_Graphics_Dwm",
+  "Win32_System_Com",
+  "Win32_UI_Shell",
+  "Win32_UI_Shell_Common",
+] }
+
+# Release profili: exe boyutunu ve bellek ayak izini kucultur.
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+strip = true
+panic = "abort"

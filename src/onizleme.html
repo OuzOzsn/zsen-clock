@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Önizleme</title>
+    <style>
+      /* Yalnizca gelistirme icin. vite build girdilerinde yer almadigi icin
+         uygulamayla birlikte paketlenmez. Amaci: widget'i gercek boyutunda,
+         masaustunu andiran bir zeminin uzerinde gorebilmek. */
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 40px;
+        padding: 32px;
+        font: 12px/1.4 system-ui, sans-serif;
+        color: #7d8595;
+        /* Koyu bir IDE penceresi uzerinde duruyormus gibi */
+        background:
+          radial-gradient(1200px 800px at 20% 0%, #1b2430 0%, #0b0e13 60%),
+          #0b0e13;
+      }
+      .yuva { display: grid; gap: 10px; justify-items: center; }
+      .etiket { letter-spacing: 0.04em; }
+      iframe {
+        border: 0;
+        border-radius: 14px;
+        box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+        background: transparent;
+      }
+      .widget { width: 340px; height: 460px; }
+      .alarm { width: 460px; height: 300px; }
+    </style>
+  </head>
+  <body>
+    <div class="yuva">
+      <iframe class="widget" src="/widget.html" title="Widget"></iframe>
+      <span class="etiket">widget · 340 × 460</span>
+    </div>
+    <div class="yuva">
+      <iframe class="alarm" src="/alarm.html" title="Alarm"></iframe>
+      <span class="etiket">alarm · 460 × 300</span>
+    </div>
+  </body>
+</html>

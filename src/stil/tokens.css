@@ -1,0 +1,103 @@
+/* ============================================================
+   Tasarim dili: "takvim yapragi"
+   ------------------------------------------------------------
+   Referans, her Turk evinde asili duran yirtmali gunluk takvim:
+   buyuk gun rakami, kagit dokusu, ve kirmizinin YALNIZCA bugun/
+   gecmis icin kullanilmasi. Burada tersine cevrildi - kagit
+   uzerine murekkep degil, murekkep uzerine kagit - cunku bu
+   uygulama gece de dahil tum gun ekranin ustunde duruyor.
+
+   Renk kurallari (bunlara sadik kalmak dilin butunlugunu korur):
+     kirmizi  -> yalnizca "simdi", gecmis ve kacirilan. Baska hicbir yerde.
+     pirinc   -> etkilesim: secim, odak, birincil dugme, geri sayim.
+     zeytin   -> tamamlanmis.
+     kagit    -> metin. Vurgu icin renk degil, agirlik/boyut kullanilir.
+   ============================================================ */
+
+:root {
+  /* --- Zemin ve yuzeyler --- */
+  --murekkep:      #16151a;  /* ana zemin: notr siyah degil, hafif mor-mavi murekkep */
+  --murekkep-2:    #1e1d25;  /* yukseltilmis yuzey: panel, kart, acilir menu */
+  --murekkep-3:    #272630;  /* hover / secili satir */
+  --ayrac:         rgba(237, 231, 218, 0.09);
+  --ayrac-guclu:   rgba(237, 231, 218, 0.17);
+
+  /* --- Metin: kagit --- */
+  --kagit:         #ede7da;  /* birincil metin */
+  --kagit-2:       #a39e94;  /* ikincil: saat, etiket, aciklama */
+  --kagit-3:       #6b6760;  /* ucuncul: pasif, ipucu */
+
+  /* --- Sinyal renkleri --- */
+  --pirinc:        #c9a227;  /* etkilesim */
+  --pirinc-parlak: #e0b93c;
+  --pirinc-sonuk:  rgba(201, 162, 39, 0.14);
+  --pirinc-ustu:   #1a1607;  /* pirinc zemin uzerindeki metin */
+
+  --kirmizi:       #e23c2e;  /* SIMDI / kacirilan / gecmis */
+  --kirmizi-sonuk: rgba(226, 60, 46, 0.15);
+
+  --zeytin:        #7fa356;  /* tamamlandi */
+  --zeytin-sonuk:  rgba(127, 163, 86, 0.15);
+
+  /* --- Kategori paleti: koyu zeminde okunur, birbirinden ayirt edilir --- */
+  --kat-1: #c9a227;  --kat-2: #6aa9d6;  --kat-3: #7fa356;  --kat-4: #d2775a;
+  --kat-5: #9b8ec4;  --kat-6: #5fa89a;  --kat-7: #c98fa8;  --kat-8: #8a8f98;
+
+  /* --- Olcu: 4px tabanli --- */
+  --b1: 4px;  --b2: 8px;  --b3: 12px;  --b4: 16px;
+  --b5: 20px; --b6: 28px; --b7: 40px;  --b8: 56px;
+
+  /* --- Yuvarlaklik --- ---------------------------------------
+     Kural: liste ve izgara KARE kalir (kagit/cetvel hissi).
+     Yuvarlaklik yalnizca etkilesime giren seylerde: dugme, alan,
+     ve pencerenin kendi kabugunda.                              */
+  --yuvarlak-dugme: 6px;
+  --yuvarlak-panel: 10px;
+  --yuvarlak-kabuk: 14px;
+
+  /* --- Golge --- */
+  --golge-panel: 0 8px 28px rgba(0, 0, 0, 0.45);
+  --golge-kabuk: 0 18px 50px rgba(0, 0, 0, 0.55);
+
+  /* --- Hareket: kisa ve tek egri. Yalnizca kullanicinin yaptigi
+         bir seye cevap verirken kullanilir. --- */
+  --gecis-hizli: 110ms cubic-bezier(0.2, 0.7, 0.3, 1);
+  --gecis:       170ms cubic-bezier(0.2, 0.7, 0.3, 1);
+
+  /* --- Tipografi --- */
+  --yazi: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif;
+  --yazi-mono: 'IBM Plex Mono', 'Cascadia Mono', Consolas, monospace;
+}
+
+/* ---------------------------------------------------------------
+   Acik tema: ayni dil, gercekten kagit uzerine murekkep.
+   Kirmizi/pirinc/zeytin rollerini korur, yalnizca koyulasir.
+   --------------------------------------------------------------- */
+:root[data-tema='acik'] {
+  --murekkep:      #f4f1e8;
+  --murekkep-2:    #ffffff;
+  --murekkep-3:    #eae5d8;
+  --ayrac:         rgba(22, 21, 26, 0.11);
+  --ayrac-guclu:   rgba(22, 21, 26, 0.2);
+
+  --kagit:         #1d1c22;
+  --kagit-2:       #5d5950;
+  --kagit-3:       #8e897f;
+
+  --pirinc:        #8a6d0d;
+  --pirinc-parlak: #a8850f;
+  --pirinc-sonuk:  rgba(138, 109, 13, 0.13);
+  --pirinc-ustu:   #fffdf5;
+
+  --kirmizi:       #c02a1d;
+  --kirmizi-sonuk: rgba(192, 42, 29, 0.11);
+
+  --zeytin:        #4d6b2c;
+  --zeytin-sonuk:  rgba(77, 107, 44, 0.13);
+
+  --kat-1: #8a6d0d;  --kat-2: #2f6f9c;  --kat-3: #4d6b2c;  --kat-4: #a44f2e;
+  --kat-5: #62539a;  --kat-6: #2c6e62;  --kat-7: #94496a;  --kat-8: #55596080;
+
+  --golge-panel: 0 8px 24px rgba(22, 21, 26, 0.12);
+  --golge-kabuk: 0 18px 44px rgba(22, 21, 26, 0.2);
+}

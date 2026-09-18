@@ -1,0 +1,5 @@
+# Kabuk betikleri her zaman LF olmali: Windows'ta yazilip Linux container'inda
+# calistiriliyorlar, CRLF olursa "set: pipefail: invalid option name" gibi
+# anlasilmasi zor hatalar veriyorlar.
+*.sh text eol=lf
+Dockerfile text eol=lf

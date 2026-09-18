@@ -1,0 +1,159 @@
+{
+  "aciklama": "Tekrar kuralinin ortak test vektorleri. Ayni dosyayi iki motor da okuyor: src/lib/tarih.test.ts (arayuz kopyasi) ve src-tauri/cekirdek/src/tekrar.rs (zamanlayici kopyasi). Ikisinin sessizce ayrilmasini engelleyen tek sey bu dosya - Program ozelligi tamamen ikisinin ayni sonucu vermesine bagli.",
+  "vakalar": [
+    {
+      "ad": "tekrarsiz yalnizca kendi gununde",
+      "baslangic": "2026-09-15 09:00",
+      "tekrar": { "tip": "yok" },
+      "bas": "2026-09-01",
+      "son": "2026-09-30",
+      "beklenen": ["2026-09-15T09:00:00"]
+    },
+    {
+      "ad": "tekrarsiz pencere disinda hic cikmaz",
+      "baslangic": "2026-09-15 09:00",
+      "tekrar": { "tip": "yok" },
+      "bas": "2026-10-01",
+      "son": "2026-10-31",
+      "beklenen": []
+    },
+    {
+      "ad": "gunluk her gun",
+      "baslangic": "2026-09-21 07:30",
+      "tekrar": { "tip": "gunluk" },
+      "bas": "2026-09-21",
+      "son": "2026-09-24",
+      "beklenen": [
+        "2026-09-21T07:30:00",
+        "2026-09-22T07:30:00",
+        "2026-09-23T07:30:00",
+        "2026-09-24T07:30:00"
+      ]
+    },
+    {
+      "ad": "iki gunde bir",
+      "baslangic": "2026-09-21 20:00",
+      "tekrar": { "tip": "gunluk", "aralik": 2 },
+      "bas": "2026-09-21",
+      "son": "2026-09-27",
+      "beklenen": [
+        "2026-09-21T20:00:00",
+        "2026-09-23T20:00:00",
+        "2026-09-25T20:00:00",
+        "2026-09-27T20:00:00"
+      ]
+    },
+    {
+      "ad": "haftalik gun kumesi",
+      "baslangic": "2026-09-21 09:00",
+      "tekrar": { "tip": "haftalik", "gunler": [1, 3, 5] },
+      "bas": "2026-09-21",
+      "son": "2026-09-30",
+      "beklenen": [
+        "2026-09-21T09:00:00",
+        "2026-09-23T09:00:00",
+        "2026-09-25T09:00:00",
+        "2026-09-28T09:00:00",
+        "2026-09-30T09:00:00"
+      ]
+    },
+    {
+      "ad": "capa secili gunlerden birine denk gelmiyor",
+      "baslangic": "2026-09-17 09:00",
+      "tekrar": { "tip": "haftalik", "gunler": [1, 2] },
+      "bas": "2026-09-17",
+      "son": "2026-10-01",
+      "beklenen": [
+        "2026-09-21T09:00:00",
+        "2026-09-22T09:00:00",
+        "2026-09-28T09:00:00",
+        "2026-09-29T09:00:00"
+      ]
+    },
+    {
+      "ad": "haftalik baslangictan once uretmez",
+      "baslangic": "2026-09-21 09:00",
+      "tekrar": { "tip": "haftalik", "gunler": [1] },
+      "bas": "2026-09-01",
+      "son": "2026-09-30",
+      "beklenen": ["2026-09-21T09:00:00", "2026-09-28T09:00:00"]
+    },
+    {
+      "ad": "iki haftada bir pazartesiye hizali",
+      "baslangic": "2026-09-21 18:00",
+      "tekrar": { "tip": "haftalik", "aralik": 2, "gunler": [1, 4] },
+      "bas": "2026-09-21",
+      "son": "2026-10-16",
+      "beklenen": [
+        "2026-09-21T18:00:00",
+        "2026-09-24T18:00:00",
+        "2026-10-05T18:00:00",
+        "2026-10-08T18:00:00"
+      ]
+    },
+    {
+      "ad": "haftalik gun kumesi bos ise baslangic gunu",
+      "baslangic": "2026-09-23 12:00",
+      "tekrar": { "tip": "haftalik" },
+      "bas": "2026-09-23",
+      "son": "2026-10-07",
+      "beklenen": [
+        "2026-09-23T12:00:00",
+        "2026-09-30T12:00:00",
+        "2026-10-07T12:00:00"
+      ]
+    },
+    {
+      "ad": "bitis tarihi dahil",
+      "baslangic": "2026-09-21 09:00",
+      "tekrar": { "tip": "haftalik", "gunler": [1, 2], "bitis_tarihi": "2026-09-28" },
+      "bas": "2026-09-01",
+      "son": "2026-12-31",
+      "beklenen": [
+        "2026-09-21T09:00:00",
+        "2026-09-22T09:00:00",
+        "2026-09-28T09:00:00"
+      ]
+    },
+    {
+      "ad": "istisna gunu atlanir",
+      "baslangic": "2026-09-21 09:00",
+      "tekrar": {
+        "tip": "haftalik",
+        "gunler": [1],
+        "istisnalar": ["2026-09-28"]
+      },
+      "bas": "2026-09-21",
+      "son": "2026-10-12",
+      "beklenen": [
+        "2026-09-21T09:00:00",
+        "2026-10-05T09:00:00",
+        "2026-10-12T09:00:00"
+      ]
+    },
+    {
+      "ad": "aylik karsiligi olmayan gunu atlar kaydirmaz",
+      "baslangic": "2026-01-31 10:00",
+      "tekrar": { "tip": "aylik" },
+      "bas": "2026-01-01",
+      "son": "2026-05-31",
+      "beklenen": [
+        "2026-01-31T10:00:00",
+        "2026-03-31T10:00:00",
+        "2026-05-31T10:00:00"
+      ]
+    },
+    {
+      "ad": "yillik ayni gun ve ay",
+      "baslangic": "2026-09-21 08:00",
+      "tekrar": { "tip": "yillik" },
+      "bas": "2026-01-01",
+      "son": "2028-12-31",
+      "beklenen": [
+        "2026-09-21T08:00:00",
+        "2027-09-21T08:00:00",
+        "2028-09-21T08:00:00"
+      ]
+    }
+  ]
+}
