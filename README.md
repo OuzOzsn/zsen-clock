@@ -20,16 +20,20 @@ Windows uygulaması. Veritabanı yok — her şey `data/` klasöründe düz JSON
 
 ## Kurmak
 
-`dist-windows\ZsenClock_0.1.0_x64-setup.exe` dosyasına çift tıkla. Yönetici
-izni istemez, kullanıcı hesabına kurar.
+Hazır dosya [Releases](https://github.com/OuzOzsn/zsen-clock/releases)
+sayfasında. İki seçenek var:
 
-Başka hiçbir şey kurman gerekmez — Rust, Node, .NET yok. Arayüzü çizen
-WebView2 motoru Windows 11'de zaten hazır; yoksa kurulum dosyasının **içinden**
-kurar, internet bile gerekmez. Sürüm uyumsuzluğu riski olmasın diye bilerek
+- `ZsenClock_<sürüm>_x64-setup.exe` — kurulum. Yönetici izni istemez,
+  kullanıcı hesabına kurar.
+- `ZsenClock.exe` — taşınabilir. Çift tıkla, kurulum yok.
+
+Kaynaktan derlemek için aşağıdaki **Windows exe derlemek** bölümüne bak;
+tek gereken Docker Desktop.
+
+Çalıştırmak için başka hiçbir şey gerekmez — Rust, Node, .NET yok. Arayüzü
+çizen WebView2 motoru Windows 11'de zaten hazır; yoksa kurulum dosyasının
+**içinden** kurar, internet bile gerekmez. Sürüm uyumsuzluğu riski olmasın diye bilerek
 böyle: setup ~130 MB, ama her makinede aynı şekilde çalışır.
-
-Kurmak istemiyorsan `dist-windows\ZsenClock.exe` taşınabilir sürümdür; çift
-tıkla, kurulum yok.
 
 İlk açılışta iki şey sorar — masaüstüne kısayol koyayım mı, bilgisayar açılınca
 otomatik başlayayım mı. İkisi de sonradan **Ayarlar › Başlangıç** altından
@@ -183,12 +187,15 @@ cd src-tauri/cekirdek && cargo test
 
 ### Windows exe derlemek
 
+Tek gereksinim **Docker Desktop** (çalışır durumda). Depoyu klonla ve:
+
 ```powershell
 .\build.ps1
 ```
 
-Derleme Docker içinde, Linux üzerinde yapılır — bu makineye Rust veya Visual
-Studio Build Tools kurulmaz. İlk çalıştırmada Docker imajı (~5 dk) ve Windows
+Betik Docker imajını gerekirse kendisi kurar. Derleme Docker içinde, Linux
+üzerinde yapılır — bu makineye Rust, Node ya da Visual Studio Build Tools
+kurulmaz. İlk çalıştırmada Docker imajı (~5 dk) ve Windows
 SDK (~2 dk) hazırlanır, sonra her ikisi de önbellekten gelir.
 
 İki çıktı verir:
