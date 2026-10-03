@@ -25,6 +25,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       nsis \
     && rm -rf /var/lib/apt/lists/*
 
+# Debian'in nsis paketi resmi NSIS'ten eksik: Tauri'nin ürettigi installer.nsi
+# "Win\RestartManager.nsh" dosyasini istiyor ama Debian paketinde yok, derleme
+# "could not find: Win\RestartManager.nsh" diye patliyor. Resmi NSIS
+# kaynagindan tek dosyayi ekliyoruz.
+RUN curl -fsSL -o /usr/share/nsis/Include/Win/RestartManager.nsh \
+      https://raw.githubusercontent.com/kichik/nsis/master/Include/Win/RestartManager.nsh
+
 # --- Node.js 22 LTS (arayuzu Vite ile derlemek icin) ---
 RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
     && apt-get install -y --no-install-recommends nodejs \
