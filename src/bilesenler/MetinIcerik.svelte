@@ -64,7 +64,7 @@
 <style>
   .icerik {
     margin: 0;
-    font-size: 13px;
+    font-size: 14px;
     line-height: 1.5;
     color: var(--kagit-2);
     /* Satir sonlari korunsun; uzun baglantilar kutuyu tasirmasin. */

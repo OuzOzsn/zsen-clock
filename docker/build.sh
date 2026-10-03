@@ -69,8 +69,13 @@ mkdir -p /cikti
 cp "$EXE" /cikti/ZsenClock.exe
 echo "==> Tasinabilir: $(du -h /cikti/ZsenClock.exe | cut -f1) -> dist-windows/ZsenClock.exe"
 
-KURULUM=$(find "$KAYNAK/bundle/nsis" -maxdepth 1 -iname "*-setup.exe" 2>/dev/null | head -1)
+# Surum yukselince eski surumun kurulumu target volume'unda kaliyor; `head -1`
+# onu secip yenisinin yerine kopyaliyordu. En yenisini al, ciktidaki eski
+# kurulumlari da temizle ki hangisinin guncel oldugu karismasin.
+KURULUM=$(find "$KAYNAK/bundle/nsis" -maxdepth 1 -iname "*-setup.exe" -printf '%T@ %p\n' 2>/dev/null \
+  | sort -n | tail -1 | cut -d' ' -f2-)
 if [ -n "$KURULUM" ]; then
+  rm -f /cikti/*-setup.exe
   cp "$KURULUM" /cikti/
   echo "==> Kurulum:    $(du -h "$KURULUM" | cut -f1) -> dist-windows/$(basename "$KURULUM")"
 else

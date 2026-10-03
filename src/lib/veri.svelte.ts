@@ -6,13 +6,14 @@
  * yazdiginda "veri-degisti" olayini yayinlar ve acik pencereler tazelenir.
  */
 
-import { cagir, dinle, yerelISO } from './ipc.ts';
+import { cagir, dinle, isoCoz, yerelISO } from './ipc.ts';
 import type { Ayarlar, Etkinlik, Kategori, Olusum, Program, SureKipi } from './tipler.ts';
 import { varsayilanAyarlar } from './ipc.ts';
 import { araliktakiOlusumlar, gunAnahtari, gunBasi, gunEkle } from './tarih.ts';
 // Saf hesaplar; asagidaki metotlar bunlari sarip IPC'ye tasiyor.
 import {
   bitisHesapla,
+  siraliBitisHesapla,
   programDurdur as durdurmayiHesapla,
   programUret as uretimiHesapla,
 } from './programUret.ts';
@@ -135,6 +136,13 @@ class Depo {
    * Uretim ozetini dondurur ki arayuz "3 gun donduruldu" diyebilsin.
    */
   async programKaydet(program: Program) {
+    // Sirali ve tur sayili kosuda bitis oge sayisina bagli: is eklenip
+    // cikarilinca son gun de kaymali.
+    const k = program.kosu;
+    if (program.duzen === 'sirali' && k && k.tur) {
+      const bitis = siraliBitisHesapla(isoCoz(k.baslangic), program.ogeler, k.ara_gun ?? 0, k.tur);
+      program = { ...program, kosu: { ...k, bitis: bitis ? gunAnahtari(bitis) : null } };
+    }
     const kayitli = await cagir('program_kaydet', { program });
     const i = this.programlar.findIndex((x) => x.id === kayitli.id);
     if (i >= 0) this.programlar[i] = kayitli;
@@ -167,8 +175,12 @@ class Depo {
     kip: SureKipi,
     hafta: number,
     bitisTarihi: Date | null,
+    /** Yalnizca sirali duzende: tur sayisi (null = sinirsiz) ve tur arasi bekleme. */
+    sirali: { tur: number | null; araGun: number } | null = null,
   ) {
-    const bitis = bitisHesapla(baslangic, kip, hafta, bitisTarihi);
+    const bitis = sirali
+      ? siraliBitisHesapla(baslangic, program.ogeler, sirali.araGun, sirali.tur)
+      : bitisHesapla(baslangic, kip, hafta, bitisTarihi);
     const calisan: Program = {
       ...program,
       kosu: {
@@ -176,6 +188,8 @@ class Depo {
         bitis: bitis ? gunAnahtari(bitis) : null,
         kip,
         hafta: kip === 'hafta' ? hafta : null,
+        tur: sirali?.tur ?? null,
+        ara_gun: sirali ? Math.max(0, Math.floor(sirali.araGun)) : null,
         baslatildi: yerelISO(new Date()),
       },
     };

@@ -12,6 +12,9 @@ Windows uygulaması. Veritabanı yok — her şey `data/` klasöründe düz JSON
 - **Program** — haftalık bir düzen kur, kenarda dursun, istediğin tarihte
   başlat. Her günün kendi içeriği olur: not, bağlantı, süre. Güncelleyince
   takvim de güncellenir; elle değiştirdiğin gün olduğu gibi kalır.
+  **Sıralı** düzende işler haftadan bağımsız, listedeki sırayla her güne bir
+  tane düşer; araya dinlenme günü, turlar arasına bekleme konabilir, liste
+  bir kez, birkaç tur ya da sınırsız tekrarlanır.
 - **Çalışma planı sihirbazı** — konuları ve saatleri söyle, haftalarca sürecek
   programı tek seferde üretsin. Ağırlık verebilirsin: `Matematik x3`.
 - **Taşınabilir** — klasörü kopyala, başka PC'de çalıştır; her şey gelir.

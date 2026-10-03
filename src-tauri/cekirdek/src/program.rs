@@ -27,6 +27,12 @@ use crate::model::Hatirlatma;
 
 pub const PROGRAM_SEMA_SURUMU: u32 = 1;
 
+/// Sirali programin disa aktarim surumu. Haftalik programlar hala 1 ile
+/// yaziliyor ki eski surumler onlari okumaya devam etsin; sirali bir dosyayi
+/// ise eski surum gunsuz bir haftalik program saniyordu - 2 gorunce
+/// "uygulamayi guncelle" diyor.
+pub const SIRALI_AKTARIM_SURUMU: u32 = 2;
+
 // ----------------------------------------------------------------- Program
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -38,6 +44,10 @@ pub struct Program {
     /// Uretilen etkinliklerin kategorisi; takvimdeki rengi de buradan gelir.
     #[serde(default = "kategori_varsayilan")]
     pub kategori: String,
+    /// Haftalik: ogeler haftanin gunlerine bagli. Sirali: ogeler gunlerden
+    /// bagimsiz, listedeki sirayla her gune bir tane dusurulur.
+    #[serde(default)]
+    pub duzen: ProgramDuzeni,
     #[serde(default)]
     pub ogeler: Vec<ProgramOgesi>,
     /// None = uykuda, takvime islenmis degil.
@@ -51,6 +61,21 @@ pub struct Program {
 
 fn kategori_varsayilan() -> String {
     "genel".to_string()
+}
+
+/// Programin ogelerini takvime nasil dizdigi.
+///
+/// `Sirali`da oge `i` (0'dan) kosunun `baslangic + i` gunune duser; liste
+/// bitince `ara_gun` kadar beklenir ve bastan alinir. Yani her oge
+/// `aralik = oge sayisi + ara_gun` olan gunluk bir tekrardir - zamanlayici
+/// yine programdan habersiz kaliyor. "10 gorev, gun gun" bir haftaya
+/// sigmadigi icin eklendi.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum ProgramDuzeni {
+    #[default]
+    Haftalik,
+    Sirali,
 }
 
 impl Program {
@@ -90,6 +115,13 @@ pub struct ProgramOgesi {
     pub sure_dakika: u32,
     #[serde(default)]
     pub hatirlatmalar: Vec<Hatirlatma>,
+    /// Yalnizca sirali duzende: bu isten sonra kac gun bos kalir.
+    #[serde(default, skip_serializing_if = "sifir_mi")]
+    pub dinlenme_gun: u32,
+}
+
+fn sifir_mi(n: &u32) -> bool {
+    *n == 0
 }
 
 // ------------------------------------------------------------- Program kosusu
@@ -103,6 +135,8 @@ pub enum SureKipi {
     Hafta,
     Tarih,
     Suresiz,
+    /// Sirali programda: liste `tur` kez bastan sona yapilir.
+    Tur,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -121,6 +155,12 @@ pub struct ProgramKosusu {
     /// Kip `Hafta` ise kullanicinin girdigi hafta sayisi.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub hafta: Option<u32>,
+    /// Sirali programda kac tur; None = sinirsiz.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tur: Option<u32>,
+    /// Sirali programda iki tur arasinda beklenen gun sayisi.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ara_gun: Option<u32>,
     pub baslatildi: NaiveDateTime,
 }
 
@@ -167,9 +207,14 @@ impl ProgramAktarimi {
         // Disa aktarilan sablon her zaman uykuda gider: karsi tarafin takvimi
         // bizim baslangic tarihimizle dolmasin.
         p.kosu = None;
+        let surum = if p.duzen == ProgramDuzeni::Sirali {
+            SIRALI_AKTARIM_SURUMU
+        } else {
+            PROGRAM_SEMA_SURUMU
+        };
         Self {
             tur: DISA_AKTARIM_TURU.to_string(),
-            surum: PROGRAM_SEMA_SURUMU,
+            surum,
             program: p,
         }
     }
@@ -182,7 +227,7 @@ impl ProgramAktarimi {
         if aktarim.tur != DISA_AKTARIM_TURU {
             return Err("Bu dosya bir program dosyasi degil.".to_string());
         }
-        if aktarim.surum > PROGRAM_SEMA_SURUMU {
+        if aktarim.surum > SIRALI_AKTARIM_SURUMU {
             return Err(
                 "Bu program daha yeni bir surumle olusturulmus. Uygulamayi guncelle."
                     .to_string(),
@@ -207,6 +252,7 @@ mod testler {
             saat: "09:00".to_string(),
             sure_dakika: dakika,
             hatirlatmalar: Vec::new(),
+            dinlenme_gun: 0,
         }
     }
 
@@ -216,6 +262,7 @@ mod testler {
             baslik: "Haftalik duzen".to_string(),
             aciklama: String::new(),
             kategori: "ders".to_string(),
+            duzen: ProgramDuzeni::Haftalik,
             ogeler: vec![oge("o1", vec![1, 3], 60), oge("o2", vec![6], 90)],
             kosu: None,
             olusturuldu: None,
@@ -247,6 +294,25 @@ mod testler {
     }
 
     #[test]
+    fn duzeni_olmayan_eski_program_haftalik_okunur() {
+        let ham = r#"{ "id": "p1", "baslik": "Eski", "ogeler": [] }"#;
+        let p: Program = serde_json::from_str(ham).expect("okunmali");
+        assert_eq!(p.duzen, ProgramDuzeni::Haftalik);
+    }
+
+    #[test]
+    fn sirali_kosu_geri_okunur() {
+        let ham = r#"{ "id": "p1", "baslik": "On gun", "duzen": "sirali", "ogeler": [],
+            "kosu": { "baslangic": "2026-10-05", "bitis": "2026-11-01", "kip": "tur",
+                      "tur": 2, "ara_gun": 3, "baslatildi": "2026-10-03T10:00:00" } }"#;
+        let p: Program = serde_json::from_str(ham).expect("okunmali");
+        assert_eq!(p.duzen, ProgramDuzeni::Sirali);
+        let k = p.kosu.expect("kosu olmali");
+        assert_eq!(k.kip, SureKipi::Tur);
+        assert_eq!((k.tur, k.ara_gun), (Some(2), Some(3)));
+    }
+
+    #[test]
     fn kosusu_yoksa_uykudadir() {
         let p = program();
         assert!(!p.calisiyor_mu());
@@ -271,6 +337,8 @@ mod testler {
             bitis: NaiveDate::from_ymd_opt(2026, 10, 18),
             kip: SureKipi::Hafta,
             hafta: Some(4),
+            tur: None,
+            ara_gun: None,
             baslatildi: NaiveDate::from_ymd_opt(2026, 9, 18)
                 .unwrap()
                 .and_hms_opt(10, 0, 0)
@@ -293,6 +361,8 @@ mod testler {
             bitis: None,
             kip: SureKipi::Suresiz,
             hafta: None,
+            tur: None,
+            ara_gun: None,
             baslatildi: NaiveDate::from_ymd_opt(2026, 9, 18)
                 .unwrap()
                 .and_hms_opt(10, 0, 0)
@@ -311,6 +381,48 @@ mod testler {
 
         let geri = ProgramAktarimi::coz(&ham.to_string()).expect("okunmali");
         assert!(!geri.calisiyor_mu(), "ice aktarilan program uykuda olmali");
+    }
+
+    /// Bu ozellikten onceki surumun disa aktardigi dosya - birebir bicim.
+    #[test]
+    fn eski_surumun_dosyasi_ice_aktarilir() {
+        let ham = r#"{
+          "tur": "zsenclock-program",
+          "surum": 1,
+          "program": {
+            "id": "eski",
+            "baslik": "Haftalik duzen",
+            "aciklama": "",
+            "kategori": "ders",
+            "ogeler": [
+              { "id": "o1", "baslik": "Matematik", "icerik": "notlar",
+                "gunler": [1, 3], "saat": "09:00", "sure_dakika": 60,
+                "hatirlatmalar": [{ "dakika_once": 10 }] }
+            ]
+          }
+        }"#;
+        let p = ProgramAktarimi::coz(ham).expect("eski dosya okunmali");
+        assert_eq!(p.duzen, ProgramDuzeni::Haftalik);
+        assert_eq!(p.ogeler[0].gunler, vec![1, 3]);
+        assert_eq!(p.ogeler[0].dinlenme_gun, 0);
+        assert!(!p.calisiyor_mu());
+    }
+
+    #[test]
+    fn sirali_program_surum_2_ile_gider_ve_geri_okunur() {
+        let mut p = program();
+        p.duzen = ProgramDuzeni::Sirali;
+        p.ogeler[0].dinlenme_gun = 2;
+        let sarili = ProgramAktarimi::sar(&p);
+        assert_eq!(sarili.surum, SIRALI_AKTARIM_SURUMU);
+
+        let geri = ProgramAktarimi::coz(&serde_json::to_string(&sarili).unwrap())
+            .expect("okunmali");
+        assert_eq!(geri.duzen, ProgramDuzeni::Sirali);
+        assert_eq!(geri.ogeler[0].dinlenme_gun, 2);
+
+        // Haftalik program eski surumler okuyabilsin diye 1'de kaliyor.
+        assert_eq!(ProgramAktarimi::sar(&program()).surum, PROGRAM_SEMA_SURUMU);
     }
 
     #[test]

@@ -515,7 +515,7 @@
     border-bottom: 1px solid var(--ayrac);
   }
   h2 { font-size: 14.5px; font-weight: 600; }
-  .alt { margin-top: 2px; font-size: 11.5px; color: var(--kagit-3); }
+  .alt { margin-top: 2px; font-size: 12.5px; color: var(--kagit-3); }
 
   .govde { overflow-y: auto; padding: var(--b2) var(--b4) var(--b5); }
 
@@ -523,7 +523,7 @@
   section + section { border-top: 1px solid var(--ayrac); }
   h3 {
     margin-bottom: var(--b3);
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 600;
     color: var(--kagit-2);
   }
@@ -542,13 +542,13 @@
 
   .ad {
     display: block;
-    font-size: 13px;
+    font-size: 14px;
     color: var(--kagit);
   }
   .aciklama {
     display: block;
     margin-top: 1px;
-    font-size: 11.5px;
+    font-size: 12.5px;
     line-height: 1.5;
     color: var(--kagit-3);
     max-width: 46ch;
@@ -561,7 +561,7 @@
     border-radius: 3px;
     background: var(--murekkep);
     font-family: var(--yazi-mono);
-    font-size: 11px;
+    font-size: 12px;
   }
 
   input[type='checkbox'] {
@@ -578,7 +578,7 @@
     border: 1px solid var(--ayrac);
     border-radius: var(--yuvarlak-dugme);
     font: inherit;
-    font-size: 12.5px;
+    font-size: 13.5px;
     color: var(--kagit);
     outline: none;
     color-scheme: dark;
@@ -605,7 +605,7 @@
     padding: 5px var(--b3);
     border: 1px solid var(--ayrac);
     border-radius: var(--yuvarlak-dugme);
-    font-size: 12px;
+    font-size: 13px;
     color: var(--kagit-3);
     transition: all var(--gecis-hizli);
   }
@@ -618,14 +618,14 @@
   }
 
   .birimli { display: flex; align-items: center; gap: var(--b2); }
-  .birim { font-size: 11.5px; color: var(--kagit-3); }
+  .birim { font-size: 12.5px; color: var(--kagit-3); }
 
   .ses-secim { display: flex; align-items: center; gap: var(--b2); }
   .dinle {
     padding: 5px var(--b3);
     border: 1px solid var(--ayrac);
     border-radius: var(--yuvarlak-dugme);
-    font-size: 12px;
+    font-size: 13px;
     color: var(--kagit-2);
     transition: all var(--gecis-hizli);
   }
@@ -634,7 +634,7 @@
 
   .ipucu {
     padding: 0 var(--b3) var(--b2);
-    font-size: 11.5px;
+    font-size: 12.5px;
     line-height: 1.6;
     color: var(--kagit-3);
   }
@@ -643,14 +643,14 @@
     border-radius: 3px;
     background: var(--murekkep-3);
     font-family: var(--yazi-mono);
-    font-size: 11px;
+    font-size: 12px;
   }
 
   .ses-hatasi {
     padding: var(--b2) var(--b3);
     border-left: 2px solid var(--kirmizi);
     background: var(--kirmizi-sonuk);
-    font-size: 11.5px;
+    font-size: 12.5px;
     line-height: 1.5;
     color: var(--kagit-2);
   }
@@ -659,7 +659,7 @@
     padding: 7px var(--b4);
     background: var(--murekkep-3);
     border-radius: var(--yuvarlak-dugme);
-    font-size: 12.5px;
+    font-size: 13.5px;
     color: var(--kagit-2);
     transition: color var(--gecis-hizli);
   }

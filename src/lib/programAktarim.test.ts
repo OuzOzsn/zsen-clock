@@ -127,3 +127,29 @@ test('ayni baslik listede tekillestirilir', () => {
   assert.equal(benzersizBaslik('Başka', mevcut), 'Başka');
   assert.equal(benzersizBaslik('  ', []), 'Program');
 });
+
+test('bu ozellikten onceki surumun dosyasi haftalik olarak gelir', () => {
+  const ham = JSON.stringify({
+    tur: 'zsenclock-program',
+    surum: 1,
+    program: {
+      id: 'eski', baslik: 'Haftalık düzen', aciklama: '', kategori: 'ders',
+      ogeler: [{ id: 'o1', baslik: 'Matematik', icerik: '', gunler: [1, 3],
+        saat: '09:00', sure_dakika: 60, hatirlatmalar: [] }],
+    },
+  });
+  const p = programiCoz(ham);
+  assert.equal(p.duzen, 'haftalik');
+  assert.deepEqual(p.ogeler[0]!.gunler, [1, 3]);
+});
+
+test('sirali program surum 2 ile yazilir ve geri okunur', () => {
+  const p = { ...ayar(), duzen: 'sirali' as const };
+  p.ogeler = p.ogeler.map((o) => ({ ...o, dinlenme_gun: 2 }));
+  const sarili = programiSar(p);
+  assert.equal(sarili.surum, 2);
+  const geri = programiCoz(JSON.stringify(sarili));
+  assert.equal(geri.duzen, 'sirali');
+  assert.equal(geri.ogeler[0]!.dinlenme_gun, 2);
+  assert.equal(programiSar(ayar()).surum, 1, 'haftalik eski surumlerle uyumlu kalmali');
+});

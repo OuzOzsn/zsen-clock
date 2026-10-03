@@ -50,7 +50,7 @@
       <div class="plan">
         <div class="bilgi">
           <span class="ad">{p.ad}</span>
-          <span class="alt">{aralik(p)} · {p.idler.length} seans</span>
+          <span class="alt">{aralik(p)} · {p.idler.length} iş</span>
         </div>
         <button
           class="sil"
@@ -68,7 +68,7 @@
       {#if onayBekleyen === p.damga}
         <div class="onay">
           <p>
-            {p.idler.length} seansın tümü silinecek.
+            {p.idler.length} işin tümü silinecek.
             {#if p.tamamlanan > 0}<strong>{p.tamamlanan} tanesi tamamlanmış.</strong>{/if}
           </p>
           <div class="onay-dugmeler">
@@ -87,7 +87,7 @@
   .planlar { display: grid; gap: 2px; align-self: start; }
   .panel-baslik {
     padding: 0 var(--b2) var(--b1);
-    font-size: 10.5px;
+    font-size: 11.5px;
     font-weight: 500;
     letter-spacing: 0.04em;
     text-transform: uppercase;
@@ -105,13 +105,13 @@
 
   .bilgi { display: grid; min-width: 0; flex: 1; }
   .ad {
-    font-size: 12.5px;
+    font-size: 13.5px;
     color: var(--kagit-2);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  .alt { font-size: 10.5px; color: var(--kagit-3); }
+  .alt { font-size: 11.5px; color: var(--kagit-3); }
 
   .sil {
     display: grid;
@@ -137,7 +137,7 @@
     border-left: 2px solid var(--kirmizi);
     background: var(--kirmizi-sonuk);
     border-radius: 0 var(--yuvarlak-dugme) var(--yuvarlak-dugme) 0;
-    font-size: 11.5px;
+    font-size: 12.5px;
     line-height: 1.5;
     color: var(--kagit-2);
   }
@@ -146,7 +146,7 @@
     padding: 3px var(--b2);
     border: 1px solid var(--ayrac);
     border-radius: var(--yuvarlak-dugme);
-    font-size: 11.5px;
+    font-size: 12.5px;
     color: var(--kagit-2);
     transition: color var(--gecis-hizli), border-color var(--gecis-hizli);
   }
@@ -157,7 +157,7 @@
 
   .hata {
     padding: var(--b2);
-    font-size: 11px;
+    font-size: 12px;
     line-height: 1.4;
     color: var(--kirmizi);
   }

@@ -166,15 +166,15 @@
       <span class="etiket">Günün düzeni</span>
       <div class="dortlu">
         <label class="kucuk-alan">
-          <span>İlk seans</span>
+          <span>İlk çalışma saati</span>
           <input type="time" bind:value={ilkSaat} />
         </label>
         <label class="kucuk-alan">
-          <span>Kaç seans</span>
+          <span>Günde kaç çalışma</span>
           <input type="number" min="1" max="12" bind:value={seansSayisi} />
         </label>
         <label class="kucuk-alan">
-          <span>Seans (dk)</span>
+          <span>Çalışma süresi (dk)</span>
           <input type="number" min="10" max="240" step="5" bind:value={seansDakika} />
         </label>
         <label class="kucuk-alan">
@@ -191,7 +191,7 @@
 
     <label class="satir-onay">
       <input type="checkbox" bind:checked={hatirlatmaVar} />
-      <span>Her seans için alarm</span>
+      <span>Her çalışma için alarm</span>
       {#if hatirlatmaVar}
         <span class="birimli">
           <input class="sayi" type="number" min="0" max="120" bind:value={hatirlatmaDakika} />
@@ -213,7 +213,7 @@
       </span>
     {:else}
       <div class="sayilar">
-        <span><strong class="zaman">{sonuc.etkinlikler.length}</strong> seans</span>
+        <span><strong class="zaman">{sonuc.etkinlikler.length}</strong> çalışma</span>
         <span class="ayrac-nokta"></span>
         <span><strong class="zaman">{sonuc.gunSayisi}</strong> gün</span>
         <span class="ayrac-nokta"></span>
@@ -258,7 +258,7 @@
     left: 50%;
     transform: translate(-50%, -50%);
     display: grid;
-    grid-template-rows: auto 1fr auto auto;
+    grid-template-rows: auto minmax(0, 1fr) auto auto;
     width: min(560px, calc(100vw - 48px));
     max-height: calc(100vh - 48px);
     background: var(--murekkep-2);
@@ -280,14 +280,14 @@
     border-bottom: 1px solid var(--ayrac);
   }
   h2 { font-size: 14.5px; font-weight: 600; }
-  .alt { margin-top: 2px; font-size: 12px; color: var(--kagit-3); }
+  .alt { margin-top: 2px; font-size: 13px; color: var(--kagit-3); }
 
   .govde { display: grid; gap: var(--b4); padding: var(--b4); overflow-y: auto; }
 
   .alan { display: grid; gap: var(--b1); min-width: 0; }
-  .etiket { font-size: 11px; font-weight: 500; color: var(--kagit-3); }
+  .etiket { font-size: 12px; font-weight: 500; color: var(--kagit-3); }
   .ipucu {
-    font-size: 11px;
+    font-size: 12px;
     line-height: 1.5;
     color: var(--kagit-3);
   }
@@ -299,7 +299,7 @@
     border: 1px solid var(--ayrac);
     border-radius: var(--yuvarlak-dugme);
     font: inherit;
-    font-size: 13px;
+    font-size: 14px;
     color: var(--kagit);
     outline: none;
     color-scheme: dark;
@@ -319,8 +319,8 @@
   }
   .dortlu { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--b2); }
   .kucuk-alan { display: grid; gap: 2px; min-width: 0; }
-  .kucuk-alan span { font-size: 10.5px; color: var(--kagit-3); }
-  .kucuk-alan input { padding: 5px var(--b2); font-size: 12.5px; }
+  .kucuk-alan span { font-size: 11.5px; color: var(--kagit-3); }
+  .kucuk-alan input { padding: 5px var(--b2); font-size: 13.5px; }
 
   /* Gunun neye benzeyecegini gosteren kucuk serit. */
   .ornek { display: flex; flex-wrap: wrap; gap: var(--b1); }
@@ -329,7 +329,7 @@
     border-left: 2px solid var(--pirinc);
     border-radius: 3px;
     background: var(--pirinc-sonuk);
-    font-size: 11px;
+    font-size: 12px;
     color: var(--kagit-2);
   }
 
@@ -339,7 +339,7 @@
     padding: 6px 0;
     border: 1px solid var(--ayrac);
     border-radius: var(--yuvarlak-dugme);
-    font-size: 11.5px;
+    font-size: 12.5px;
     color: var(--kagit-3);
     transition: all var(--gecis-hizli);
   }
@@ -355,7 +355,7 @@
     display: flex;
     align-items: center;
     gap: var(--b2);
-    font-size: 13px;
+    font-size: 14px;
     cursor: pointer;
   }
   .satir-onay input[type='checkbox'] {
@@ -365,21 +365,21 @@
   }
   .birimli { display: flex; align-items: center; gap: var(--b2); margin-left: auto; }
   .sayi { width: 58px; padding: 4px var(--b2); text-align: right; font-family: var(--yazi-mono); }
-  .birim { font-size: 11.5px; color: var(--kagit-3); }
+  .birim { font-size: 12.5px; color: var(--kagit-3); }
 
   code {
     padding: 1px 4px;
     border-radius: 3px;
     background: var(--murekkep);
     font-family: var(--yazi-mono);
-    font-size: 10.5px;
+    font-size: 11.5px;
   }
 
   .hata {
     padding: var(--b2) var(--b3);
     border-left: 2px solid var(--kirmizi);
     background: var(--kirmizi-sonuk);
-    font-size: 12px;
+    font-size: 13px;
   }
 
   /* --- Onizleme seridi --- */
@@ -391,13 +391,13 @@
     background: var(--murekkep);
   }
   .onizleme.bos { color: var(--kagit-3); }
-  .onizleme-bos { font-size: 12px; color: var(--kagit-3); }
+  .onizleme-bos { font-size: 13px; color: var(--kagit-3); }
 
   .sayilar {
     display: flex;
     align-items: center;
     gap: var(--b2);
-    font-size: 12.5px;
+    font-size: 13.5px;
     color: var(--kagit-2);
   }
   .sayilar strong { color: var(--kagit); font-size: 15px; font-weight: 600; }
@@ -416,7 +416,7 @@
     padding: 2px var(--b2);
     border: 1px solid var(--ayrac);
     border-radius: 99px;
-    font-size: 11px;
+    font-size: 12px;
     color: var(--kagit-3);
   }
   .pay-ad { color: var(--kagit-2); }
@@ -432,7 +432,7 @@
     height: 34px;
     padding: 0 var(--b4);
     border-radius: var(--yuvarlak-dugme);
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 500;
     transition: background var(--gecis-hizli), color var(--gecis-hizli);
   }

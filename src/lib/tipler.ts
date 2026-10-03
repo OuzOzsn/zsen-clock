@@ -58,6 +58,8 @@ export interface Kategori {
   renk: string;
   /** ikonlar.ts icindeki ad; bos ise yalnizca renk noktasi gosterilir. */
   ikon?: string | null;
+  /** Kategorinin ne oldugu; takvime yeni bakan biri icin. Duz metin. */
+  aciklama?: string;
 }
 
 /** Takvimde gosterilen tek bir tekrar ornegi. Diskte tutulmaz, hesaplanir. */
@@ -73,7 +75,13 @@ export interface Olusum {
 // ------------------------------------------------------------------ Program
 
 /** Sureyi kullanicinin hangi biciminde verdigi; `bitis` her durumda yazilir. */
-export type SureKipi = 'hafta' | 'tarih' | 'suresiz';
+export type SureKipi = 'hafta' | 'tarih' | 'suresiz' | 'tur';
+
+/**
+ * haftalik: ogeler haftanin gunlerine bagli.
+ * sirali: ogeler gunlerden bagimsiz; listedeki sirayla her gune bir tane.
+ */
+export type ProgramDuzeni = 'haftalik' | 'sirali';
 
 export interface ProgramOgesi {
   id: string;
@@ -86,6 +94,8 @@ export interface ProgramOgesi {
   saat: string;
   sure_dakika: number;
   hatirlatmalar: Hatirlatma[];
+  /** Yalnizca sirali duzende: bu isten sonra kac gun bos kalir. */
+  dinlenme_gun?: number;
 }
 
 export interface ProgramKosusu {
@@ -95,6 +105,10 @@ export interface ProgramKosusu {
   bitis?: string | null;
   kip: SureKipi;
   hafta?: number | null;
+  /** Sirali programda kac tur; bos = sinirsiz. */
+  tur?: number | null;
+  /** Sirali programda iki tur arasinda beklenen gun. */
+  ara_gun?: number | null;
   /** "YYYY-MM-DDTHH:MM:SS" */
   baslatildi: string;
 }
@@ -105,6 +119,8 @@ export interface Program {
   aciklama: string;
   /** Uretilen etkinliklerin kategorisi; takvimdeki rengi buradan gelir. */
   kategori: string;
+  /** Eski kayitlarda yok = haftalik. */
+  duzen?: ProgramDuzeni;
   ogeler: ProgramOgesi[];
   /** Bos = uykuda, takvime islenmis degil. */
   kosu?: ProgramKosusu | null;

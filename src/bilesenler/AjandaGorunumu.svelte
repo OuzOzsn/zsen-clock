@@ -131,8 +131,8 @@
   .gun-basligi.bugun .gun-no { color: var(--kirmizi); }
 
   .gun-yazi { display: grid; gap: 0; }
-  .gun-adi { font-size: 12.5px; font-weight: 500; color: var(--kagit-2); }
-  .ay-adi { font-size: 11.5px; color: var(--kagit-3); }
+  .gun-adi { font-size: 13.5px; font-weight: 500; color: var(--kagit-2); }
+  .ay-adi { font-size: 12.5px; color: var(--kagit-3); }
 
   .rozet {
     margin-left: auto;
@@ -141,7 +141,7 @@
     border-radius: 99px;
     background: var(--kirmizi-sonuk);
     color: var(--kirmizi);
-    font-size: 10.5px;
+    font-size: 11.5px;
     font-weight: 500;
   }
 
@@ -180,7 +180,7 @@
   }
   .icerik:hover { background: var(--murekkep-2); }
 
-  .saat { font-size: 12px; color: var(--kagit-2); }
+  .saat { font-size: 13px; color: var(--kagit-2); }
   .baslik {
     font-size: 13.5px;
     color: var(--kagit);
@@ -192,7 +192,7 @@
     display: flex;
     align-items: center;
     gap: var(--b2);
-    font-size: 11.5px;
+    font-size: 12.5px;
     color: var(--kagit-3);
   }
 
@@ -213,5 +213,5 @@
     text-align: center;
   }
   .bos-baslik { font-size: 15px; color: var(--kagit-2); }
-  .bos-alt { font-size: 12.5px; color: var(--kagit-3); }
+  .bos-alt { font-size: 13.5px; color: var(--kagit-3); }
 </style>

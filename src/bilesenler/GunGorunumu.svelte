@@ -376,14 +376,14 @@
     border-right: 1px solid var(--ayrac);
   }
   .gun-basligi:last-child { border-right: none; }
-  .gun-adi { font-size: 11px; font-weight: 500; color: var(--kagit-3); }
+  .gun-adi { font-size: 12px; font-weight: 500; color: var(--kagit-3); }
   .gun-no {
     font-size: 15px;
     font-weight: 600;
     color: var(--kagit);
     letter-spacing: -0.02em;
   }
-  .ay-adi { font-size: 11.5px; color: var(--kagit-3); }
+  .ay-adi { font-size: 12.5px; color: var(--kagit-3); }
   .gun-basligi.bugun .gun-no,
   .gun-basligi.bugun .gun-adi { color: var(--kirmizi); }
 
@@ -403,7 +403,7 @@
     position: absolute;
     right: var(--b2);
     transform: translateY(-50%);
-    font-size: 10.5px;
+    font-size: 11.5px;
     color: var(--kagit-3);
   }
   .saat-etiketi:first-child { transform: none; }
@@ -447,7 +447,7 @@
   }
 
   .blok-baslik {
-    font-size: 11.5px;
+    font-size: 12.5px;
     font-weight: 500;
     color: var(--kagit);
     overflow: hidden;
@@ -455,7 +455,7 @@
     white-space: nowrap;
     pointer-events: none;
   }
-  .blok-saat { font-size: 10.5px; color: var(--kagit-2); pointer-events: none; }
+  .blok-saat { font-size: 11.5px; color: var(--kagit-2); pointer-events: none; }
 
   /* Alt kenardaki uzatma bandi: imleci degistirir, blogun kendisi tasinir. */
   .uzatma-tutamagi {
@@ -509,7 +509,7 @@
     background: var(--pirinc);
     color: var(--pirinc-ustu);
     border-radius: var(--yuvarlak-dugme);
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 600;
     box-shadow: var(--golge-panel);
     pointer-events: none;

@@ -10,6 +10,7 @@
   import { cagir, isoCoz, TAURI_ICINDE } from '../lib/ipc.ts';
   import { benzersizBaslik, dosyaSec, programiCoz } from '../lib/programAktarim.ts';
   import { depo } from '../lib/veri.svelte.ts';
+  import { siraliYerlesim } from '../lib/programUret.ts';
 
   interface Ozellikler {
     onYeni: () => void;
@@ -66,7 +67,12 @@
 
   function altSatir(p: Program): string {
     const gunler = [...new Set(p.ogeler.flatMap((o) => o.gunler))].sort((a, b) => a - b);
-    const gunMetni = gunler.length > 0 ? gunler.map((g) => GUN_KISA[g]).join(' ') : 'gün yok';
+    const gunMetni =
+      p.duzen === 'sirali'
+        ? `sıralı · ${p.ogeler.length} iş, ${siraliYerlesim(p.ogeler, 0).uzunluk} gün`
+        : gunler.length > 0
+          ? gunler.map((g) => GUN_KISA[g]).join(' ')
+          : 'gün yok';
     if (!p.kosu) return `${gunMetni} · uykuda`;
     const bas = kisaTarih(isoCoz(p.kosu.baslangic));
     const son = p.kosu.bitis ? kisaTarih(isoCoz(p.kosu.bitis)) : 'süresiz';
@@ -122,7 +128,7 @@
     padding: 0 var(--b2) var(--b1);
   }
   .panel-baslik {
-    font-size: 10.5px;
+    font-size: 11.5px;
     font-weight: 500;
     letter-spacing: 0.04em;
     text-transform: uppercase;
@@ -143,7 +149,7 @@
   .metin-dugme {
     padding: 2px var(--b2);
     border-radius: var(--yuvarlak-dugme);
-    font-size: 11px;
+    font-size: 12px;
     color: var(--kagit-3);
     transition: color var(--gecis-hizli), background var(--gecis-hizli);
   }
@@ -153,7 +159,7 @@
   .hata {
     margin: 0;
     padding: var(--b2);
-    font-size: 11px;
+    font-size: 12px;
     line-height: 1.4;
     color: var(--kirmizi);
   }
@@ -161,7 +167,7 @@
   .bos {
     margin: 0;
     padding: 0 var(--b2) var(--b1);
-    font-size: 11px;
+    font-size: 12px;
     line-height: 1.5;
     color: var(--kagit-3);
   }
@@ -190,14 +196,14 @@
 
   .bilgi { display: grid; min-width: 0; flex: 1; }
   .ad {
-    font-size: 12.5px;
+    font-size: 13.5px;
     color: var(--kagit-2);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
   .alt {
-    font-size: 10.5px;
+    font-size: 11.5px;
     color: var(--kagit-3);
     overflow: hidden;
     text-overflow: ellipsis;

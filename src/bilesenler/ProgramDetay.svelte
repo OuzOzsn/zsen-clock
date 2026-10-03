@@ -10,7 +10,7 @@
   import { cagir, isoCoz, TAURI_ICINDE } from '../lib/ipc.ts';
   import { saatBicim } from '../lib/tarih.ts';
   import { AY_UZUN, GUN_UZUN, type Program } from '../lib/tipler.ts';
-  import { programOzeti } from '../lib/programUret.ts';
+  import { programOzeti, siraliMi, siraliYerlesim } from '../lib/programUret.ts';
   import { depo } from '../lib/veri.svelte.ts';
   import {
     aktarimDosyaAdi,
@@ -22,7 +22,8 @@
   interface Ozellikler {
     program: Program;
     onKapat: () => void;
-    onDuzenle: (p: Program) => void;
+    /** `ogeId` verilirse duzenleyici o is acik halde gelir. */
+    onDuzenle: (p: Program, ogeId?: string) => void;
     onBaslat: (p: Program) => void;
   }
   let { program, onKapat, onDuzenle, onBaslat }: Ozellikler = $props();
@@ -30,6 +31,29 @@
   // Depo tazelendiginde bu panel de guncel kalsin.
   const guncel = $derived(depo.programlar.find((p) => p.id === program.id) ?? program);
   const ozet = $derived(programOzeti(guncel, depo.etkinlikler, depo.simdi));
+  const sirali = $derived(siraliMi(guncel));
+  let acikSira = $state<string | null>(null);
+  const yerlesim = $derived(siraliYerlesim(guncel.ogeler, 0));
+  /** Silme onayi bekleyen is. */
+  let silinecekOge = $state<string | null>(null);
+
+  /** Tek bir isi programdan cikarir; calisan programda takvim de guncellenir. */
+  const ogeyiSil = (id: string) =>
+    sar(async () => {
+      await depo.programKaydet({
+        ...$state.snapshot(guncel),
+        ogeler: guncel.ogeler.filter((o) => o.id !== id),
+      });
+      silinecekOge = null;
+    }, 'İş programdan çıkarıldı.');
+
+  /** "2 tur, aralarda 3 gün" gibi kosu ozeti - yalnizca sirali. */
+  const turMetni = $derived.by(() => {
+    const k = guncel.kosu;
+    if (!sirali || !k) return '';
+    const tur = k.tur == null ? 'sınırsız tekrar' : k.tur === 1 ? 'bir kez' : `${k.tur} tur`;
+    return k.ara_gun ? `${tur}, turlar arası ${k.ara_gun} gün` : tur;
+  });
 
   let acikGun = $state<number | null>(null);
   let silmeOnayi = $state(false);
@@ -95,6 +119,25 @@
   }
 </script>
 
+{#snippet ogeEylemleri(id: string)}
+  <div class="oge-eylem">
+    {#if silinecekOge === id}
+      <span class="oge-onay">Bu iş programdan çıkarılsın mı?</span>
+      <button class="kucuk tehlike-metin" disabled={calisiyor} onclick={() => void ogeyiSil(id)}>
+        Çıkar
+      </button>
+      <button class="kucuk" onclick={() => (silinecekOge = null)}>Vazgeç</button>
+    {:else}
+      <button class="kucuk" disabled={calisiyor} onclick={() => onDuzenle(guncel, id)}>
+        Düzenle
+      </button>
+      <button class="kucuk tehlike-metin" disabled={calisiyor} onclick={() => (silinecekOge = id)}>
+        Sil
+      </button>
+    {/if}
+  </div>
+{/snippet}
+
 <svelte:window
   onkeydown={(e) => {
     if (e.key === 'Escape' && !calisiyor) {
@@ -121,6 +164,7 @@
         {#if guncel.kosu}
           {kisaTarih(isoCoz(guncel.kosu.baslangic))} –
           {guncel.kosu.bitis ? kisaTarih(isoCoz(guncel.kosu.bitis)) : 'süresiz'}
+          {#if turMetni}· {turMetni}{/if}
         {:else}
           Uykuda
         {/if}
@@ -145,11 +189,11 @@
     <div class="sayilar">
       <div class="kutu">
         <span class="deger" data-sayisal>{ozet.haftalikOturum}</span>
-        <span class="alt">haftada iş</span>
+        <span class="alt">{sirali ? 'turda iş' : 'haftada iş'}</span>
       </div>
       <div class="kutu">
         <span class="deger" data-sayisal>{saatler(ozet.haftalikDakika)}</span>
-        <span class="alt">haftada saat</span>
+        <span class="alt">{sirali ? 'turda saat' : 'haftada saat'}</span>
       </div>
       {#if ozet.toplamOturum !== null}
         <div class="kutu">
@@ -175,6 +219,37 @@
       </div>
     {/if}
 
+    <!-- --------------------------------------------------- sira listesi -->
+    {#if sirali}
+    <div class="bolum">
+      <span class="etiket">Sıra</span>
+      {#each guncel.ogeler as o, i (o.id)}
+        {@const gunNo = (yerlesim.ofset.get(o.id) ?? i) + 1}
+        <div class="gun">
+          <button
+            class="gun-satiri"
+            onclick={() => (acikSira = acikSira === o.id ? null : o.id)}
+          >
+            <span class="gun-ad">{gunNo}. gün</span>
+            <span class="gun-alt">{o.saat} · {o.baslik} · {o.sure_dakika} dk</span>
+          </button>
+          {#if acikSira === o.id}
+            <div class="gun-icerik">
+              {#if o.icerik}<MetinIcerik metin={o.icerik} />{/if}
+              {@render ogeEylemleri(o.id)}
+            </div>
+          {/if}
+        </div>
+        {#if (o.dinlenme_gun ?? 0) > 0}
+          <div class="dinlenme">
+            {o.dinlenme_gun === 1
+              ? `${gunNo + 1}. gün`
+              : `${gunNo + 1}–${gunNo + (o.dinlenme_gun ?? 0)}. gün`} · dinlenme
+          </div>
+        {/if}
+      {/each}
+    </div>
+    {:else}
     <!-- --------------------------------------------------- hafta izgarasi -->
     <div class="bolum">
       <span class="etiket">Hangi gün ne var</span>
@@ -207,6 +282,7 @@
                   {#if o.icerik}
                     <MetinIcerik metin={o.icerik} />
                   {/if}
+                  {@render ogeEylemleri(o.id)}
                 </div>
               {/each}
             </div>
@@ -214,6 +290,8 @@
         </div>
       {/each}
     </div>
+
+    {/if}
 
     <!-- --------------------------------------------------------- sapmalar -->
     {#if ozet.sapmalar.length > 0}
@@ -308,7 +386,7 @@
     left: 50%;
     transform: translate(-50%, -50%);
     display: grid;
-    grid-template-rows: auto 1fr auto auto;
+    grid-template-rows: auto minmax(0, 1fr) auto auto;
     width: min(560px, calc(100vw - 48px));
     max-height: min(820px, calc(100vh - 48px));
     background: var(--murekkep-2);
@@ -340,7 +418,7 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  .durum { font-size: 11px; color: var(--kagit-3); }
+  .durum { font-size: 12px; color: var(--kagit-3); }
   .durum.calisiyor { color: var(--pirinc); }
 
   .ikon {
@@ -362,14 +440,29 @@
     overflow-y: auto;
   }
 
+  .oge-eylem {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--b2);
+    margin-top: var(--b2);
+  }
+  .oge-onay { margin-right: auto; font-size: 12.5px; color: var(--kagit-2); }
+  .dinlenme {
+    padding: 2px var(--b3) 2px 12px;
+    font-size: 12.5px;
+    font-style: italic;
+    color: var(--kagit-3);
+  }
+
   .etiket {
-    font-size: 10.5px;
+    font-size: 11.5px;
     font-weight: 500;
     letter-spacing: 0.04em;
     text-transform: uppercase;
     color: var(--kagit-3);
   }
-  .aciklama { margin: 0; font-size: 11.5px; line-height: 1.5; color: var(--kagit-3); }
+  .aciklama { margin: 0; font-size: 12.5px; line-height: 1.5; color: var(--kagit-3); }
 
   .sayilar { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--b2); }
   .kutu {
@@ -382,11 +475,11 @@
     text-align: center;
   }
   .deger { font-size: 18px; font-weight: 600; color: var(--kagit); letter-spacing: -0.02em; }
-  .kutu .alt { font-size: 10px; color: var(--kagit-3); }
+  .kutu .alt { font-size: 11px; color: var(--kagit-3); }
 
   .ilerleme { display: grid; gap: 5px; }
   .ilerleme-ust { display: flex; align-items: baseline; justify-content: space-between; }
-  .ilerleme-sayi { font-size: 11.5px; color: var(--kagit-2); }
+  .ilerleme-sayi { font-size: 12.5px; color: var(--kagit-2); }
   .cubuk {
     height: 5px;
     background: var(--murekkep);
@@ -411,8 +504,8 @@
   .gun-satiri:hover:not(:disabled) { background: var(--murekkep-3); }
   .gun-satiri:disabled { cursor: default; }
   .gun.bos { opacity: 0.5; }
-  .gun-ad { font-size: 12.5px; color: var(--kagit-2); }
-  .gun-alt { font-size: 11px; color: var(--kagit-3); }
+  .gun-ad { font-size: 13.5px; color: var(--kagit-2); }
+  .gun-alt { font-size: 12px; color: var(--kagit-3); }
 
   .gun-icerik {
     display: grid;
@@ -425,9 +518,9 @@
   }
   .oge { display: grid; gap: 3px; }
   .oge-ust { display: flex; align-items: baseline; gap: var(--b2); }
-  .oge-ust .zaman { font-size: 11px; color: var(--kagit-3); flex: none; }
-  .oge-ad { font-size: 12.5px; color: var(--kagit); flex: 1; }
-  .oge-sure { font-size: 10.5px; color: var(--kagit-3); flex: none; }
+  .oge-ust .zaman { font-size: 12px; color: var(--kagit-3); flex: none; }
+  .oge-ad { font-size: 13.5px; color: var(--kagit); flex: 1; }
+  .oge-sure { font-size: 11.5px; color: var(--kagit-3); flex: none; }
 
   .sapma {
     display: flex;
@@ -440,9 +533,9 @@
     border-radius: var(--yuvarlak-dugme);
   }
   .sapma-bilgi { display: grid; min-width: 0; }
-  .sapma-gun { font-size: 11px; color: var(--kagit-3); }
+  .sapma-gun { font-size: 12px; color: var(--kagit-3); }
   .sapma-ad {
-    font-size: 12px;
+    font-size: 13px;
     color: var(--kagit-2);
     overflow: hidden;
     text-overflow: ellipsis;
@@ -462,7 +555,7 @@
   .dugme {
     padding: 7px var(--b4);
     border-radius: var(--yuvarlak-dugme);
-    font-size: 13px;
+    font-size: 14px;
     transition: background var(--gecis-hizli), color var(--gecis-hizli);
   }
   .dugme:disabled { opacity: 0.55; cursor: default; }
@@ -480,7 +573,7 @@
     border-top: 1px solid var(--ayrac);
     border-left: 2px solid var(--kirmizi);
     background: var(--kirmizi-sonuk);
-    font-size: 11.5px;
+    font-size: 12.5px;
     line-height: 1.5;
     color: var(--kagit-2);
   }
@@ -491,7 +584,7 @@
     padding: 3px var(--b2);
     border: 1px solid var(--ayrac);
     border-radius: var(--yuvarlak-dugme);
-    font-size: 11.5px;
+    font-size: 12.5px;
     color: var(--kagit-2);
     flex: none;
     transition: color var(--gecis-hizli), border-color var(--gecis-hizli);
@@ -506,14 +599,14 @@
     padding: var(--b2) var(--b3);
     border-left: 2px solid var(--kirmizi);
     background: var(--kirmizi-sonuk);
-    font-size: 12px;
+    font-size: 13px;
     color: var(--kirmizi);
   }
   .bilgi {
     margin: 0;
     padding: var(--b2) var(--b3);
     border-left: 2px solid var(--zeytin);
-    font-size: 12px;
+    font-size: 13px;
     color: var(--kagit-2);
   }
 </style>

@@ -183,6 +183,10 @@ pub struct Kategori {
     /// o zaman arayuz yalnizca renk noktasini gosterir.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ikon: Option<String>,
+    /// Kategorinin ne oldugu - takvime yeni bakan biri icin. Duz metin,
+    /// baglantilar gosterimde taninir.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub aciklama: String,
 }
 
 impl Kategori {
@@ -191,6 +195,7 @@ impl Kategori {
             ad: ad.to_string(),
             renk: renk.to_string(),
             ikon: Some(ikon.to_string()),
+            aciklama: String::new(),
         }
     }
 }

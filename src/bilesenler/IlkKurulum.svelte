@@ -153,7 +153,7 @@
     letter-spacing: -0.02em;
   }
   .alt {
-    font-size: 13px;
+    font-size: 14px;
     line-height: 1.55;
     color: var(--kagit-2);
     max-width: 42ch;
@@ -185,7 +185,7 @@
   .aciklama {
     display: block;
     margin-top: 2px;
-    font-size: 12px;
+    font-size: 13px;
     line-height: 1.5;
     color: var(--kagit-3);
   }
@@ -194,7 +194,7 @@
     padding: var(--b2) var(--b3);
     border-left: 2px solid var(--kirmizi);
     background: var(--kirmizi-sonuk);
-    font-size: 12px;
+    font-size: 13px;
   }
 
   footer { display: flex; justify-content: flex-end; gap: var(--b2); }
@@ -202,7 +202,7 @@
     height: 36px;
     padding: 0 var(--b5);
     border-radius: var(--yuvarlak-dugme);
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 500;
     transition: background var(--gecis-hizli), color var(--gecis-hizli);
   }

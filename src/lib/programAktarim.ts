@@ -14,6 +14,8 @@ import type { Program } from './tipler.ts';
 /** Yanlis dosyayi ice aktarmaya calisinca anlasilir hata verebilmek icin. */
 export const AKTARIM_TURU = 'zsenclock-program';
 export const AKTARIM_SURUMU = 1;
+/** Sirali program 2 ile yazilir: eski surumler onu gunsuz haftalik saniyordu. */
+export const SIRALI_AKTARIM_SURUMU = 2;
 
 export interface ProgramAktarimi {
   tur: string;
@@ -25,7 +27,7 @@ export interface ProgramAktarimi {
 export function programiSar(program: Program): ProgramAktarimi {
   return {
     tur: AKTARIM_TURU,
-    surum: AKTARIM_SURUMU,
+    surum: program.duzen === 'sirali' ? SIRALI_AKTARIM_SURUMU : AKTARIM_SURUMU,
     program: { ...program, kosu: null },
   };
 }
@@ -56,7 +58,7 @@ export function programiCoz(metin: string): Program {
   if (!a || typeof a !== 'object' || a.tur !== AKTARIM_TURU || !a.program) {
     throw new Error('Bu dosya bir program dosyası değil.');
   }
-  if (typeof a.surum === 'number' && a.surum > AKTARIM_SURUMU) {
+  if (typeof a.surum === 'number' && a.surum > SIRALI_AKTARIM_SURUMU) {
     throw new Error(
       'Bu program daha yeni bir sürümle oluşturulmuş. Uygulamayı güncelle.',
     );
@@ -68,6 +70,7 @@ export function programiCoz(metin: string): Program {
     baslik: typeof p.baslik === 'string' ? p.baslik : 'Program',
     aciklama: typeof p.aciklama === 'string' ? p.aciklama : '',
     kategori: typeof p.kategori === 'string' && p.kategori ? p.kategori : 'genel',
+    duzen: p.duzen === 'sirali' ? 'sirali' : 'haftalik',
     ogeler: Array.isArray(p.ogeler) ? p.ogeler : [],
     kosu: null,
   };

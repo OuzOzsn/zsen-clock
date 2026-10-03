@@ -129,7 +129,7 @@
     border: none;
     outline: none;
     font: inherit;
-    font-size: 13px;
+    font-size: 14px;
     color: var(--kagit);
   }
   input::placeholder { color: var(--kagit-3); }
@@ -141,7 +141,7 @@
     padding: var(--b2) var(--b3);
     border-left: 2px solid var(--pirinc);
     background: var(--pirinc-sonuk);
-    font-size: 12px;
+    font-size: 13px;
   }
   .ozet.uyari {
     border-left-color: var(--kagit-3);
@@ -159,7 +159,7 @@
 
   .ipucu {
     padding: 0 2px;
-    font-size: 11.5px;
+    font-size: 12.5px;
     line-height: 1.55;
     color: var(--kagit-3);
   }

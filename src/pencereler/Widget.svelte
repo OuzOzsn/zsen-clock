@@ -24,6 +24,16 @@
   const bugun = $derived(gunBasi(simdi));
   const gununler = $derived(depo.yuklendi ? depo.gununOlusumlari(bugun) : []);
 
+  /**
+   * Su an suren is: basladi, bitis saati henuz gelmedi. Varsa geri sayim
+   * siradakine degil BUNUN bitisine kurulur - calisirken asil merak edilen
+   * "ne kadar kaldi". Tamamlanmis olsa da sayiyoruz: alarmdaki "Başlıyorum"
+   * isi zaten tamamlandi diye isaretliyor.
+   */
+  const suruyor = $derived(
+    gununler.filter((o) => o.bitis && o.baslangic <= simdi && o.bitis > simdi).at(-1) ?? null,
+  );
+
   /** Henuz saati gelmemis ilk is - geri sayim buna kurulur. */
   const siradaki = $derived(gununler.find((o) => !o.tamamlandi && o.baslangic > simdi) ?? null);
   /** Saati gecmis ama tamamlanmamis isler. Bunlar "bitti" sayilmaz. */
@@ -170,8 +180,26 @@
   </header>
 
   <!-- Kahraman: siradaki seye kalan sure -->
-  <section class="sirada" class:bos={!siradaki} data-tauri-drag-region>
-    {#if siradaki}
+  <section class="sirada" class:bos={!siradaki && !suruyor} data-tauri-drag-region>
+    {#if suruyor && suruyor.bitis}
+      {@const sayac = geriSayimParcali(suruyor.bitis, simdi)}
+      <div class="sayac suruyor zaman">
+        {sayac.ana}{#if sayac.saniye}<span class="saniye">:{sayac.saniye}</span>{/if}
+      </div>
+      <div class="sirada-baslik" title={suruyor.etkinlik.baslik}>
+        <span class="canli" aria-hidden="true"></span>{suruyor.etkinlik.baslik}
+      </div>
+      <div class="sirada-alt">
+        <span>sürüyor · bitiş</span>
+        <span class="zaman">{saatBicim(suruyor.bitis, depo.ayarlar.saat24)}</span>
+        {#if siradaki}
+          <span class="nokta"></span>
+          <span class="sonra" title={siradaki.etkinlik.baslik}>
+            sonra {saatBicim(siradaki.baslangic, depo.ayarlar.saat24)} {siradaki.etkinlik.baslik}
+          </span>
+        {/if}
+      </div>
+    {:else if siradaki}
       {@const sayac = geriSayimParcali(siradaki.baslangic, simdi)}
       <div class="sayac zaman">
         {sayac.ana}{#if sayac.saniye}<span class="saniye">:{sayac.saniye}</span>{/if}
@@ -349,6 +377,23 @@
     color: var(--pirinc);
   }
   .saniye { color: var(--pirinc); opacity: 0.45; }
+  /* Suren isin kalan suresi: siradakine geri sayimdan ayirt edilsin diye
+     yesil. */
+  .sayac.suruyor, .sayac.suruyor .saniye { color: var(--zeytin); }
+  .canli {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    margin-right: 6px;
+    vertical-align: 1px;
+    border-radius: 50%;
+    background: var(--zeytin);
+  }
+  .sonra {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 
   .sayac-bos {
     font-size: 19px;

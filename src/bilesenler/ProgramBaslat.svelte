@@ -9,7 +9,12 @@
   import { isoCoz, yerelISO } from '../lib/ipc.ts';
   import { gunAnahtari, gunBasi, olusumlar } from '../lib/tarih.ts';
   import { AY_UZUN, type Program, type SureKipi } from '../lib/tipler.ts';
-  import { bitisHesapla, ogeyiEtkinligeCevir } from '../lib/programUret.ts';
+  import {
+    bitisHesapla,
+    ogeyiEtkinligeCevir,
+    siraliBitisHesapla,
+    siraliMi,
+  } from '../lib/programUret.ts';
   import { depo } from '../lib/veri.svelte.ts';
 
   interface Ozellikler {
@@ -28,9 +33,20 @@
   let hata = $state<string | null>(null);
   let calisiyor = $state(false);
 
+  // Sirali duzen: hafta yerine tur. 'tek' = 1 tur, 'tur' = N tur.
+  const sirali = $derived(siraliMi(program));
+  let turKipi = $state<'tek' | 'tur' | 'sinirsiz'>('tek');
+  let turSayisi = $state(4);
+  let araGun = $state(0);
+  const tur = $derived(
+    turKipi === 'tek' ? 1 : turKipi === 'tur' ? Math.max(1, Math.floor(turSayisi)) : null,
+  );
+
   const baslangic = $derived(isoCoz(baslangicAlani));
   const bitis = $derived(
-    bitisHesapla(baslangic, kip, hafta, kip === 'tarih' ? isoCoz(bitisAlani) : null),
+    sirali
+      ? siraliBitisHesapla(baslangic, program.ogeler, araGun, tur)
+      : bitisHesapla(baslangic, kip, hafta, kip === 'tarih' ? isoCoz(bitisAlani) : null),
   );
 
   /** Onizleme: kosu gercekten kurulmus gibi etkinlikleri uret ve say. */
@@ -40,6 +56,8 @@
       bitis: bitis ? gunAnahtari(bitis) : null,
       kip,
       hafta: kip === 'hafta' ? hafta : null,
+      tur,
+      ara_gun: araGun,
       baslatildi: yerelISO(new Date()),
     };
     let ilkGun: Date | null = null;
@@ -82,9 +100,10 @@
       await depo.programBaslat(
         program,
         baslangic,
-        kip,
+        sirali ? (tur === null ? 'suresiz' : 'tur') : kip,
         hafta,
         kip === 'tarih' ? isoCoz(bitisAlani) : null,
+        sirali ? { tur, araGun: Math.max(0, Math.floor(araGun || 0)) } : null,
       );
       onBasladi(onizleme.ilkGun);
       onKapat();
@@ -138,37 +157,81 @@
       <span class="etiket">Başlangıç tarihi</span>
       <input type="date" bind:value={baslangicAlani} />
       <span class="ipucu">
-        Seçilen gün dahildir: ilk iş, bu tarihten itibaren programdaki
-        ilk güne düşer.
+        {#if sirali}
+          Seçilen gün dahildir: 1. iş bu güne, sonraki her iş bir sonraki
+          güne düşer.
+        {:else}
+          Seçilen gün dahildir: ilk iş, bu tarihten itibaren programdaki
+          ilk güne düşer.
+        {/if}
       </span>
     </label>
 
-    <div class="alan">
-      <span class="etiket">Süre</span>
-      <div class="kip-secici">
-        {#each kipler as [deger, etiket] (deger)}
-          <button
-            type="button"
-            class="kip-dugme"
-            class:secili={kip === deger}
-            onclick={() => (kip = deger)}
-          >
-            {etiket}
-          </button>
-        {/each}
+    {#if sirali}
+      <div class="alan">
+        <span class="etiket">Liste bitince</span>
+        <div class="kip-secici">
+          {#each [['tek', 'Bir kez yap'], ['tur', 'Tur sayısı'], ['sinirsiz', 'Sınırsız tekrar']] as const as [deger, etiket] (deger)}
+            <button
+              type="button"
+              class="kip-dugme"
+              class:secili={turKipi === deger}
+              onclick={() => (turKipi = deger)}
+            >
+              {etiket}
+            </button>
+          {/each}
+        </div>
       </div>
-    </div>
 
-    {#if kip === 'hafta'}
-      <label class="alan kucuk">
-        <span class="etiket">Kaç hafta</span>
-        <input type="number" min="1" max="520" bind:value={hafta} />
-      </label>
-    {:else if kip === 'tarih'}
-      <label class="alan kucuk">
-        <span class="etiket">Bitiş tarihi (bu gün dahil)</span>
-        <input type="date" bind:value={bitisAlani} />
-      </label>
+      <div class="ikili">
+        {#if turKipi === 'tur'}
+          <label class="alan kucuk">
+            <span class="etiket">Kaç tur</span>
+            <input type="number" min="1" max="520" bind:value={turSayisi} />
+          </label>
+        {/if}
+        {#if turKipi !== 'tek'}
+          <label class="alan kucuk">
+            <span class="etiket">Turlar arası bekleme (gün)</span>
+            <input type="number" min="0" max="365" bind:value={araGun} />
+          </label>
+        {/if}
+      </div>
+      {#if turKipi !== 'tek'}
+        <span class="ipucu">
+          {program.ogeler.length} iş bitince {araGun > 0 ? `${araGun} gün beklenir, sonra` : 'ertesi gün'}
+          1. işten yeniden başlanır.
+        </span>
+      {/if}
+    {:else}
+      <div class="alan">
+        <span class="etiket">Süre</span>
+        <div class="kip-secici">
+          {#each kipler as [deger, etiket] (deger)}
+            <button
+              type="button"
+              class="kip-dugme"
+              class:secili={kip === deger}
+              onclick={() => (kip = deger)}
+            >
+              {etiket}
+            </button>
+          {/each}
+        </div>
+      </div>
+
+      {#if kip === 'hafta'}
+        <label class="alan kucuk">
+          <span class="etiket">Kaç hafta</span>
+          <input type="number" min="1" max="520" bind:value={hafta} />
+        </label>
+      {:else if kip === 'tarih'}
+        <label class="alan kucuk">
+          <span class="etiket">Bitiş tarihi (bu gün dahil)</span>
+          <input type="date" bind:value={bitisAlani} />
+        </label>
+      {/if}
     {/if}
 
     <div class="onizleme">
@@ -183,7 +246,7 @@
       <p class="satir">
         <strong>Aralık:</strong>
         {kisaTarih(baslangic)} –
-        {#if bitis}{kisaTarih(bitis)}{:else}süresiz{/if}
+        {#if bitis}{kisaTarih(bitis)}{:else}{sirali ? 'sınırsız' : 'süresiz'}{/if}
       </p>
       {#if bitis}
         <p class="satir">
@@ -222,7 +285,7 @@
     left: 50%;
     transform: translate(-50%, -50%);
     display: grid;
-    grid-template-rows: auto 1fr auto;
+    grid-template-rows: auto minmax(0, 1fr) auto;
     width: min(440px, calc(100vw - 48px));
     max-height: min(680px, calc(100vh - 48px));
     background: var(--murekkep-2);
@@ -282,14 +345,16 @@
 
   .alan { display: grid; gap: 5px; }
   .kucuk { max-width: 200px; }
+  .ikili { display: flex; gap: var(--b3); }
+  .ikili:empty { display: none; }
   .etiket {
-    font-size: 10.5px;
+    font-size: 11.5px;
     font-weight: 500;
     letter-spacing: 0.04em;
     text-transform: uppercase;
     color: var(--kagit-3);
   }
-  .ipucu { font-size: 10.5px; line-height: 1.5; color: var(--kagit-3); }
+  .ipucu { font-size: 11.5px; line-height: 1.5; color: var(--kagit-3); }
 
   input {
     width: 100%;
@@ -298,7 +363,7 @@
     border: 1px solid var(--ayrac);
     border-radius: var(--yuvarlak-dugme);
     font: inherit;
-    font-size: 13px;
+    font-size: 14px;
     color: var(--kagit);
   }
   input:focus { border-color: var(--pirinc); outline: none; }
@@ -310,7 +375,7 @@
     padding: 6px 0;
     border: 1px solid var(--ayrac);
     border-radius: var(--yuvarlak-dugme);
-    font-size: 11.5px;
+    font-size: 12.5px;
     color: var(--kagit-3);
     transition: color var(--gecis-hizli), border-color var(--gecis-hizli),
       background var(--gecis-hizli);
@@ -330,14 +395,14 @@
     border: 1px solid var(--ayrac);
     border-radius: var(--yuvarlak-dugme);
   }
-  .satir { margin: 0; font-size: 12.5px; line-height: 1.5; color: var(--kagit-2); }
+  .satir { margin: 0; font-size: 13.5px; line-height: 1.5; color: var(--kagit-2); }
   .satir strong { font-weight: 500; color: var(--kagit-3); }
-  .sonuk { font-size: 11.5px; color: var(--kagit-3); }
+  .sonuk { font-size: 12.5px; color: var(--kagit-3); }
 
   .dugme {
     padding: 7px var(--b4);
     border-radius: var(--yuvarlak-dugme);
-    font-size: 13px;
+    font-size: 14px;
     transition: background var(--gecis-hizli), color var(--gecis-hizli);
   }
   .dugme:disabled { opacity: 0.55; cursor: default; }
@@ -351,7 +416,7 @@
     padding: var(--b2) var(--b3);
     border-left: 2px solid var(--kirmizi);
     background: var(--kirmizi-sonuk);
-    font-size: 12px;
+    font-size: 13px;
     color: var(--kirmizi);
   }
 </style>

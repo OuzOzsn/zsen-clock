@@ -123,7 +123,7 @@
   }
   .baslik {
     padding: var(--b2) var(--b3);
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 500;
     color: var(--kagit-3);
   }
@@ -155,7 +155,7 @@
 
   .gun-no {
     padding-left: 3px;
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 500;
     color: var(--kagit-2);
     line-height: 1.4;
@@ -201,11 +201,11 @@
     background: var(--renk);
   }
   .cip-saat {
-    font-size: 10px;
+    font-size: 11px;
     color: var(--kagit-3);
   }
   .cip-baslik {
-    font-size: 11.5px;
+    font-size: 12.5px;
     color: var(--kagit);
     overflow: hidden;
     text-overflow: ellipsis;
@@ -220,7 +220,7 @@
 
   .daha {
     padding: 1px 4px 1px 11px;
-    font-size: 10.5px;
+    font-size: 11.5px;
     color: var(--kagit-3);
     text-align: left;
   }

@@ -16,42 +16,80 @@
   import { untrack } from 'svelte';
   import { GUN_KISA, GUN_UZUN, type Program, type ProgramOgesi } from '../lib/tipler.ts';
   import { depo } from '../lib/veri.svelte.ts';
-  import type { UretimOzeti } from '../lib/programUret.ts';
+  import KategoriSecici from './KategoriSecici.svelte';
+  import { siraliYerlesim, type UretimOzeti } from '../lib/programUret.ts';
 
   interface Ozellikler {
     program: Program;
     onKapat: () => void;
     onKaydedildi?: (p: Program, ozet: UretimOzeti | null) => void;
+    /** Acilista acik gelecek is. */
+    acikOgeId?: string | null;
   }
-  let { program, onKapat, onKaydedildi }: Ozellikler = $props();
+  let { program, onKapat, onKaydedildi, acikOgeId = null }: Ozellikler = $props();
 
   // Formun kendi kopyasi: iptal edilirse depodaki kayit bozulmasin.
   let taslak = $state<Program>(
     untrack(() => structuredClone($state.snapshot(program))),
   );
-  let acikOge = $state<string | null>(null);
+  let acikOge = $state<string | null>(untrack(() => acikOgeId));
   let hata = $state<string | null>(null);
   let calisiyor = $state(false);
 
   const yeniMi = $derived(!taslak.id);
-  const isSayisi = $derived(taslak.ogeler.reduce((t, o) => t + o.gunler.length, 0));
+  /**
+   * Sirali duzende isler gunlerden bagimsiz: listedeki sirayla her gune bir
+   * tane. "10 gorev gun gun" haftaya sigmiyordu; haftalik duzende bunu
+   * yapmak icin ayni programi parca parca kurmak gerekiyordu.
+   */
+  const sirali = $derived(taslak.duzen === 'sirali');
+  const isSayisi = $derived(
+    sirali ? taslak.ogeler.length : taslak.ogeler.reduce((t, o) => t + o.gunler.length, 0),
+  );
   const haftalikDakika = $derived(
-    taslak.ogeler.reduce((t, o) => t + o.sure_dakika * o.gunler.length, 0),
+    taslak.ogeler.reduce((t, o) => t + o.sure_dakika * (sirali ? 1 : o.gunler.length), 0),
   );
 
-  const secilenKategori = $derived(
-    depo.kategoriler.find(
-      (k) => k.ad.toLowerCase() === taslak.kategori.trim().toLowerCase(),
-    ),
-  );
+  function duzenSec(duzen: 'haftalik' | 'sirali') {
+    if (taslak.kosu) return;
+    taslak.duzen = duzen;
+    // Sirali duzende gun secilmiyor; haftaliga donuste gunsuz is kalmasin.
+    if (duzen === 'haftalik') {
+      for (const o of taslak.ogeler) if (o.gunler.length === 0) o.gunler = [1];
+    }
+  }
+
+  /** Sirali duzende her isin kacinci gune dustugu (dinlenmeler dahil). */
+  const yerlesim = $derived(siraliYerlesim(taslak.ogeler, 0));
+
+  function dinlenmeAyarla(oge: ProgramOgesi, gun: number) {
+    oge.dinlenme_gun = Math.max(0, Math.min(365, Math.floor(gun || 0)));
+  }
+
+  /** "+ Dinlenme günü": son isin ardina bir bos gun ekler. */
+  function dinlenmeEkle() {
+    const son = taslak.ogeler.at(-1);
+    if (son) dinlenmeAyarla(son, (son.dinlenme_gun ?? 0) + 1);
+  }
+
+  /** Sirali duzende isin yerini bir yukari/asagi kaydirir. */
+  function tasi(id: string, yon: -1 | 1) {
+    const i = taslak.ogeler.findIndex((o) => o.id === id);
+    const j = i + yon;
+    if (i < 0 || j < 0 || j >= taslak.ogeler.length) return;
+    const yeni = [...taslak.ogeler];
+    [yeni[i], yeni[j]] = [yeni[j]!, yeni[i]!];
+    taslak.ogeler = yeni;
+  }
+
 
   function yeniKimlik(): string {
     return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
   }
 
-  /** Listeleme sirasi: once en erken gun, sonra saat. */
-  const sirali = $derived(
-    [...taslak.ogeler].sort((a, b) => {
+  /** Listeleme sirasi: haftalikta once en erken gun, sonra saat; siralida liste sirasi. */
+  const gosterilen = $derived(
+    sirali ? taslak.ogeler : [...taslak.ogeler].sort((a, b) => {
       const ag = Math.min(...(a.gunler.length ? a.gunler : [8]));
       const bg = Math.min(...(b.gunler.length ? b.gunler : [8]));
       return ag - bg || a.saat.localeCompare(b.saat);
@@ -73,8 +111,9 @@
       id: yeniKimlik(),
       baslik: '',
       icerik: '',
-      gunler: [1],
-      saat: '09:00',
+      gunler: sirali ? [] : [1],
+      // Sirali iste saat cogu zaman bir oncekiyle ayni: yeniden yazdirmayalim.
+      saat: sirali ? (taslak.ogeler.at(-1)?.saat ?? '09:00') : '09:00',
       sure_dakika: depo.ayarlar.varsayilan_sure_dakika,
       hatirlatmalar: [{ dakika_once: depo.ayarlar.varsayilan_hatirlatma_dakika }],
     };
@@ -201,28 +240,56 @@
       <textarea rows="2" bind:value={taslak.aciklama} placeholder="İsteğe bağlı"></textarea>
     </label>
 
-    <label class="alan">
-      <span class="etiket">Kategori</span>
-      <div class="kategori-satiri">
-        {#if secilenKategori}
-          <span class="kategori-nokta" style:background={secilenKategori.renk}></span>
-        {/if}
-        <input bind:value={taslak.kategori} list="program-kategori-listesi" placeholder="genel" />
+    <div class="alan">
+      <span class="etiket">Düzen</span>
+      <div class="kip-secici">
+        <button
+          type="button"
+          class="kip-dugme"
+          class:secili={!sirali}
+          disabled={!!taslak.kosu}
+          onclick={() => duzenSec('haftalik')}
+        >
+          Haftalık — işler haftanın günlerine bağlı
+        </button>
+        <button
+          type="button"
+          class="kip-dugme"
+          class:secili={sirali}
+          disabled={!!taslak.kosu}
+          onclick={() => duzenSec('sirali')}
+        >
+          Sıralı — her gün listeden bir sonraki iş
+        </button>
       </div>
-    </label>
-    <datalist id="program-kategori-listesi">
-      {#each depo.kategoriler as k (k.ad)}<option value={k.ad}></option>{/each}
-    </datalist>
+      <span class="ipucu">
+        {#if taslak.kosu}
+          Çalışan programın düzeni değiştirilemez; önce durdurulmalı.
+        {:else if sirali}
+          1. iş başlangıç gününe, 2. iş ertesi güne düşer… Liste bitince ne
+          olacağı (bir kez, birkaç tur, sınırsız, aradaki bekleme) başlatırken
+          seçilir.
+        {:else}
+          Her iş seçilen hafta günlerinde tekrarlanır.
+        {/if}
+      </span>
+    </div>
+
+    <div class="alan">
+      <span class="etiket">Kategori</span>
+      <KategoriSecici bind:deger={taslak.kategori} />
+    </div>
 
     <div class="bolum">
       <div class="bolum-basligi">
         <span class="etiket">İşler</span>
         <span class="sayac">
-          {isSayisi} iş · haftada {Math.round((haftalikDakika / 60) * 10) / 10} saat
+          {isSayisi} iş{#if sirali} · {yerlesim.uzunluk} gün{/if} · {sirali ? 'tur başına' : 'haftada'}
+          {Math.round((haftalikDakika / 60) * 10) / 10} saat
         </span>
       </div>
 
-      {#each sirali as oge (oge.id)}
+      {#each gosterilen as oge, i (oge.id)}
         <div class="oge" class:acik={acikOge === oge.id}>
           <!-- Silme dugmesi satirda duruyor: yalnizca acik formda olunca
                kapali bir isi kaldirmanin yolu gorunmuyordu. -->
@@ -231,16 +298,45 @@
               class="oge-ac"
               onclick={() => (acikOge = acikOge === oge.id ? null : oge.id)}
             >
+              {#if sirali}<span class="oge-sira zaman">{(yerlesim.ofset.get(oge.id) ?? i) + 1}. gün</span>{/if}
               <span class="oge-saat zaman">{oge.saat}–{bitisSaati(oge)}</span>
               <span class="oge-ad">{oge.baslik || 'Adsız iş'}</span>
               <span class="oge-gunler">
-                {#if oge.gunler.length === 0}
+                {#if sirali}
+                  <!-- siralida gun yok, sira solda yaziyor -->
+                {:else if oge.gunler.length === 0}
                   gün seçilmedi
                 {:else}
                   {oge.gunler.map((g) => GUN_KISA[g]).join(' ')}
                 {/if}
               </span>
             </button>
+            {#if sirali}
+              <button
+                class="oge-kaldir oge-tasi"
+                onclick={() => tasi(oge.id, -1)}
+                disabled={i === 0}
+                aria-label="Bir gün öne al"
+                title="Bir gün öne al"
+              >
+                <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                  <path d="M4 10l4-4 4 4" stroke="currentColor" stroke-width="1.4"
+                    stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+              </button>
+              <button
+                class="oge-kaldir oge-tasi"
+                onclick={() => tasi(oge.id, 1)}
+                disabled={i === gosterilen.length - 1}
+                aria-label="Bir gün sonraya al"
+                title="Bir gün sonraya al"
+              >
+                <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                  <path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.4"
+                    stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+              </button>
+            {/if}
             <button
               class="oge-kaldir"
               onclick={() => ogeSil(oge.id)}
@@ -269,8 +365,21 @@
                   <span class="etiket">Süre (dk)</span>
                   <input type="number" min="0" max="1440" step="5" bind:value={oge.sure_dakika} />
                 </label>
+                {#if sirali}
+                  <label class="alan kucuk">
+                    <span class="etiket">Sonra dinlenme (gün)</span>
+                    <input
+                      type="number"
+                      min="0"
+                      max="365"
+                      value={oge.dinlenme_gun ?? 0}
+                      oninput={(e) => dinlenmeAyarla(oge, Number(e.currentTarget.value))}
+                    />
+                  </label>
+                {/if}
               </div>
 
+              {#if !sirali}
               <div class="alan">
                 <span class="etiket">Hangi günlerde tekrarlanır</span>
                 <div class="gun-secici">
@@ -291,6 +400,7 @@
                   eklenmeli.
                 </span>
               </div>
+              {/if}
 
               <label class="alan">
                 <span class="etiket">İçerik</span>
@@ -338,12 +448,34 @@
             </div>
           {/if}
         </div>
+        {#if sirali && (oge.dinlenme_gun ?? 0) > 0}
+          {@const ilk = (yerlesim.ofset.get(oge.id) ?? i) + 2}
+          {@const kac = oge.dinlenme_gun ?? 0}
+          <div class="dinlenme">
+            <span class="dinlenme-gun zaman">
+              {kac === 1 ? `${ilk}. gün` : `${ilk}–${ilk + kac - 1}. gün`}
+            </span>
+            <span class="dinlenme-ad">Dinlenme</span>
+            <span class="dinlenme-ayar">
+              <button onclick={() => dinlenmeAyarla(oge, kac - 1)} aria-label="Bir gün azalt">−</button>
+              <span class="zaman">{kac} gün</span>
+              <button onclick={() => dinlenmeAyarla(oge, kac + 1)} aria-label="Bir gün artır">+</button>
+            </span>
+          </div>
+        {/if}
       {/each}
 
-      <button class="ekle-is" onclick={ogeEkle}>+ İş ekle</button>
+      <div class="ekle-satiri">
+        <button class="ekle-is" onclick={ogeEkle}>+ İş ekle</button>
+        {#if sirali && taslak.ogeler.length > 0}
+          <button class="ekle-is" onclick={dinlenmeEkle}>+ Dinlenme günü</button>
+        {/if}
+      </div>
     </div>
 
-    <!-- Salt okunur ozet: gunler isin icinde seciliyor, burada sonucu gorunuyor. -->
+    <!-- Salt okunur ozet: gunler isin icinde seciliyor, burada sonucu gorunuyor.
+         Sirali duzende liste zaten gun sirasinda; ozet gereksiz. -->
+    {#if !sirali}
     <div class="bolum">
       <span class="etiket">Haftalık görünüm</span>
       <div class="ozet">
@@ -361,6 +493,7 @@
         {/each}
       </div>
     </div>
+    {/if}
   </div>
 
   <footer>
@@ -386,7 +519,7 @@
     left: 50%;
     transform: translate(-50%, -50%);
     display: grid;
-    grid-template-rows: auto 1fr auto;
+    grid-template-rows: auto minmax(0, 1fr) auto;
     width: min(620px, calc(100vw - 48px));
     max-height: min(820px, calc(100vh - 48px));
     background: var(--murekkep-2);
@@ -438,13 +571,13 @@
   .kucuk { min-width: 0; }
   .ikili { display: grid; grid-template-columns: 1fr 1fr; gap: var(--b3); }
   .etiket {
-    font-size: 10.5px;
+    font-size: 11.5px;
     font-weight: 500;
     letter-spacing: 0.04em;
     text-transform: uppercase;
     color: var(--kagit-3);
   }
-  .ipucu { font-size: 10.5px; color: var(--kagit-3); }
+  .ipucu { font-size: 11.5px; color: var(--kagit-3); }
 
   input, textarea {
     width: 100%;
@@ -453,19 +586,17 @@
     border: 1px solid var(--ayrac);
     border-radius: var(--yuvarlak-dugme);
     font: inherit;
-    font-size: 13px;
+    font-size: 14px;
     color: var(--kagit);
   }
   textarea { resize: vertical; min-height: 44px; line-height: 1.5; }
   input:focus, textarea:focus { border-color: var(--pirinc); outline: none; }
   input[type='time'] { color-scheme: dark; }
 
-  .kategori-satiri { display: flex; align-items: center; gap: var(--b2); }
-  .kategori-nokta { width: 9px; height: 9px; flex: none; border-radius: 50%; }
 
   .bolum { display: grid; gap: var(--b2); }
   .bolum-basligi { display: flex; align-items: baseline; justify-content: space-between; }
-  .sayac { font-size: 11px; color: var(--kagit-3); }
+  .sayac { font-size: 12px; color: var(--kagit-3); }
 
   .ekle-is {
     justify-self: start;
@@ -473,11 +604,33 @@
     padding: 4px var(--b3);
     border: 1px dashed var(--ayrac-guclu);
     border-radius: var(--yuvarlak-dugme);
-    font-size: 12px;
+    font-size: 13px;
     color: var(--kagit-3);
     transition: color var(--gecis-hizli), border-color var(--gecis-hizli);
   }
   .ekle-is:hover { color: var(--pirinc); border-color: var(--pirinc); }
+  .ekle-satiri { display: flex; gap: var(--b2); }
+
+  .dinlenme {
+    display: flex;
+    align-items: center;
+    gap: var(--b2);
+    padding: 4px var(--b3);
+    border: 1px dashed var(--ayrac);
+    border-radius: var(--yuvarlak-dugme);
+    font-size: 12.5px;
+    color: var(--kagit-3);
+  }
+  .dinlenme-gun { min-width: 42px; font-size: 12px; }
+  .dinlenme-ad { flex: 1; font-style: italic; }
+  .dinlenme-ayar { display: flex; align-items: center; gap: var(--b1); }
+  .dinlenme-ayar button {
+    width: 22px;
+    height: 22px;
+    border-radius: var(--yuvarlak-dugme);
+    color: var(--kagit-2);
+  }
+  .dinlenme-ayar button:hover { background: var(--murekkep-3); color: var(--kagit); }
 
   .ozet {
     display: grid;
@@ -489,9 +642,9 @@
   }
   .ozet-gun { display: grid; grid-template-columns: 82px 1fr; gap: var(--b2); }
   .ozet-gun.bos { opacity: 0.45; }
-  .ozet-ad { font-size: 11.5px; color: var(--kagit-3); }
+  .ozet-ad { font-size: 12.5px; color: var(--kagit-3); }
   .ozet-isler {
-    font-size: 11.5px;
+    font-size: 12.5px;
     color: var(--kagit-2);
     overflow: hidden;
     text-overflow: ellipsis;
@@ -538,9 +691,31 @@
   .oge-satiri:hover .oge-kaldir,
   .oge-kaldir:focus-visible { opacity: 1; }
   .oge-kaldir:hover { color: var(--kirmizi); background: var(--kirmizi-sonuk); }
-  .oge-saat { font-size: 11px; color: var(--kagit-3); flex: none; }
-  .oge-ad {
+  .oge-saat { font-size: 12px; color: var(--kagit-3); flex: none; }
+  .oge-sira { font-size: 12px; color: var(--pirinc); flex: none; min-width: 42px; }
+  .oge-tasi:hover:not(:disabled) { color: var(--kagit); background: var(--murekkep-3); }
+  .oge-tasi:disabled { visibility: hidden; }
+
+  .kip-secici { display: flex; gap: 3px; }
+  .kip-dugme {
+    flex: 1;
+    padding: 6px var(--b2);
+    border: 1px solid var(--ayrac);
+    border-radius: var(--yuvarlak-dugme);
     font-size: 12.5px;
+    color: var(--kagit-3);
+    transition: color var(--gecis-hizli), border-color var(--gecis-hizli),
+      background var(--gecis-hizli);
+  }
+  .kip-dugme:hover:not(:disabled) { color: var(--kagit-2); border-color: var(--ayrac-guclu); }
+  .kip-dugme:disabled:not(.secili) { opacity: 0.45; cursor: default; }
+  .kip-dugme.secili {
+    background: var(--pirinc);
+    border-color: var(--pirinc);
+    color: var(--pirinc-ustu);
+  }
+  .oge-ad {
+    font-size: 13.5px;
     color: var(--kagit);
     overflow: hidden;
     text-overflow: ellipsis;
@@ -548,7 +723,7 @@
     flex: 1;
   }
   .oge-gunler {
-    font-size: 10.5px;
+    font-size: 11.5px;
     letter-spacing: 0.02em;
     color: var(--kagit-3);
     flex: none;
@@ -570,7 +745,7 @@
     padding: 5px 0;
     border: 1px solid var(--ayrac);
     border-radius: var(--yuvarlak-dugme);
-    font-size: 11px;
+    font-size: 12px;
     color: var(--kagit-3);
     transition: color var(--gecis-hizli), border-color var(--gecis-hizli),
       background var(--gecis-hizli);
@@ -583,14 +758,14 @@
   }
 
   .hatirlatma { display: flex; align-items: center; gap: var(--b2); }
-  .onay { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--kagit-2); }
+  .onay { display: flex; align-items: center; gap: 6px; font-size: 13.5px; color: var(--kagit-2); }
   .onay input { width: auto; }
   .dakika { width: 72px; }
-  .birim { font-size: 12px; color: var(--kagit-3); }
+  .birim { font-size: 13px; color: var(--kagit-3); }
 
   .oge-sil {
     justify-self: start;
-    font-size: 11.5px;
+    font-size: 12.5px;
     color: var(--kagit-3);
     padding: 3px var(--b2);
     border-radius: var(--yuvarlak-dugme);
@@ -600,7 +775,7 @@
   .dugme {
     padding: 7px var(--b4);
     border-radius: var(--yuvarlak-dugme);
-    font-size: 13px;
+    font-size: 14px;
     transition: background var(--gecis-hizli), color var(--gecis-hizli);
   }
   .dugme:disabled { opacity: 0.55; cursor: default; }
@@ -614,7 +789,7 @@
     padding: var(--b2) var(--b3);
     border-left: 2px solid var(--kirmizi);
     background: var(--kirmizi-sonuk);
-    font-size: 12px;
+    font-size: 13px;
     color: var(--kirmizi);
   }
   .uyari {
@@ -622,7 +797,7 @@
     padding: var(--b2) var(--b3);
     border-left: 2px solid var(--pirinc);
     background: var(--pirinc-sonuk);
-    font-size: 11.5px;
+    font-size: 12.5px;
     line-height: 1.5;
     color: var(--kagit-2);
   }

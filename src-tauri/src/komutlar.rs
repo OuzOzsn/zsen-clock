@@ -76,6 +76,7 @@ pub fn etkinlik_kaydet(
                 ad: etkinlik.kategori.clone(),
                 renk,
                 ikon: None,
+                aciklama: String::new(),
             });
         }
     }
@@ -453,6 +454,7 @@ pub fn program_etkinlikleri_yaz(
                     ad: e.kategori.clone(),
                     renk,
                     ikon: None,
+                    aciklama: String::new(),
                 });
             }
             dosya.etkinlikler.push(e);

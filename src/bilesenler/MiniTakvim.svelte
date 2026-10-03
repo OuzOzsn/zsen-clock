@@ -92,7 +92,7 @@
     justify-content: space-between;
   }
   .ay-adi {
-    font-size: 12.5px;
+    font-size: 13.5px;
     font-weight: 600;
     color: var(--kagit);
   }
@@ -118,7 +118,7 @@
 
   .basharf {
     padding-bottom: 2px;
-    font-size: 10px;
+    font-size: 11px;
     color: var(--kagit-3);
     text-align: center;
   }
@@ -129,7 +129,7 @@
     place-items: center;
     height: 24px;
     border-radius: var(--yuvarlak-dugme);
-    font-size: 11.5px;
+    font-size: 12.5px;
     color: var(--kagit-2);
     transition: background var(--gecis-hizli), color var(--gecis-hizli);
   }

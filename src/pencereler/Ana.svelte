@@ -38,6 +38,8 @@
   let planAcik = $state(false);
   let kategorilerAcik = $state(false);
   let programDuzenlenen = $state<Program | null>(null);
+  /** Duzenleyici acilinca acik gelecek is (Ayrintilar'daki "Düzenle"). */
+  let programAcikOge = $state<string | null>(null);
   let programDetayi = $state<Program | null>(null);
   let programBaslatilan = $state<Program | null>(null);
   /** Ilk calistirmada karsilama ekrani. Yalnizca bir kez cikar. */
@@ -269,9 +271,9 @@
           class="kategori"
           class:gizli
           aria-pressed={gizli}
-          title={gizli
+          title={(gizli
             ? `${k.ad} takvimde gizli — göstermek için tıkla`
-            : `${k.ad} — takvimde gizlemek için tıkla`}
+            : `${k.ad} — takvimde gizlemek için tıkla`) + (k.aciklama ? `\n\n${k.aciklama}` : '')}
           onclick={() => kategoriDegistir(k.ad)}
         >
           {#if k.ikon}
@@ -395,7 +397,7 @@
 {#if planAcik}
   <PlanSihirbazi
     onKapat={() => (planAcik = false)}
-    onEklendi={(g) => { secili = gunBasi(g); gorunum = 'hafta'; }}
+    onEklendi={(g) => { secili = gunBasi(g); gorunum = 'ay'; }}
   />
 {/if}
 
@@ -407,7 +409,7 @@
   <ProgramDetay
     program={programDetayi}
     onKapat={() => (programDetayi = null)}
-    onDuzenle={(p) => { programDetayi = null; programDuzenlenen = p; }}
+    onDuzenle={(p, ogeId) => { programDetayi = null; programAcikOge = ogeId ?? null; programDuzenlenen = p; }}
     onBaslat={(p) => { programDetayi = null; programBaslatilan = p; }}
   />
 {/if}
@@ -415,7 +417,8 @@
 {#if programDuzenlenen}
   <ProgramPaneli
     program={programDuzenlenen}
-    onKapat={() => (programDuzenlenen = null)}
+    acikOgeId={programAcikOge}
+    onKapat={() => { programDuzenlenen = null; programAcikOge = null; }}
     onKaydedildi={(p) => {
       // Uykudaki yeni program kaydedilince dogrudan baslatma adimina gec:
       // kullanicinin istedigi sey zaten "ne zaman baslasin" sorusu.
@@ -428,7 +431,7 @@
   <ProgramBaslat
     program={programBaslatilan}
     onKapat={() => (programBaslatilan = null)}
-    onBasladi={(g) => { secili = gunBasi(g); gorunum = 'hafta'; }}
+    onBasladi={(g) => { secili = gunBasi(g); gorunum = 'ay'; }}
   />
 {/if}
 
@@ -468,7 +471,7 @@
 
   .marka { padding-bottom: 2px; }
   .marka-ad {
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 600;
     letter-spacing: -0.01em;
     color: var(--kagit-2);
@@ -477,7 +480,7 @@
   .panel-baslik {
     display: block;
     margin-bottom: var(--b2);
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 500;
     color: var(--kagit-3);
   }
@@ -490,7 +493,7 @@
     padding: 8px var(--b3);
     border: 1px solid var(--ayrac);
     border-radius: var(--yuvarlak-dugme);
-    font-size: 12.5px;
+    font-size: 13.5px;
     color: var(--kagit-2);
     transition: color var(--gecis-hizli), border-color var(--gecis-hizli);
   }
@@ -500,7 +503,7 @@
   .metin-dugme {
     padding: 2px var(--b2);
     border-radius: var(--yuvarlak-dugme);
-    font-size: 11px;
+    font-size: 12px;
     color: var(--kagit-3);
     transition: color var(--gecis-hizli), background var(--gecis-hizli);
   }
@@ -555,7 +558,7 @@
   }
   .kategori.gizli .kategori-renk { background: var(--kagit-3) !important; }
   .kategori-ad {
-    font-size: 12.5px;
+    font-size: 13.5px;
     color: var(--kagit-2);
     overflow: hidden;
     text-overflow: ellipsis;
@@ -567,7 +570,7 @@
     padding: 5px var(--b2);
     border: 1px solid var(--pirinc);
     border-radius: var(--yuvarlak-dugme);
-    font-size: 11px;
+    font-size: 12px;
     line-height: 1.4;
     text-align: left;
     color: var(--pirinc);
@@ -577,7 +580,7 @@
 
   .panel-dip { align-self: end; }
   .dip-dugme {
-    font-size: 11.5px;
+    font-size: 12.5px;
     color: var(--kagit-3);
     transition: color var(--gecis-hizli);
   }
@@ -628,7 +631,7 @@
     padding: 4px var(--b3);
     border: 1px solid var(--ayrac);
     border-radius: var(--yuvarlak-dugme);
-    font-size: 12px;
+    font-size: 13px;
     color: var(--kagit-2);
     transition: color var(--gecis-hizli), border-color var(--gecis-hizli);
   }
@@ -641,7 +644,7 @@
   .gorunum-dugme {
     position: relative;
     padding: 6px var(--b3) 7px;
-    font-size: 12.5px;
+    font-size: 13.5px;
     color: var(--kagit-3);
     transition: color var(--gecis-hizli);
   }
@@ -662,7 +665,7 @@
     padding: var(--b2) var(--b5);
     border-bottom: 1px solid var(--ayrac);
     background: var(--kirmizi-sonuk);
-    font-size: 12px;
+    font-size: 13px;
     color: var(--kagit-2);
   }
   .uyari-serit strong { color: var(--kirmizi); font-weight: 600; }

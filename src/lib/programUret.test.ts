@@ -10,6 +10,7 @@ import {
   programOzeti,
   programUret,
   saatCoz,
+  siraliBitisHesapla,
 } from './programUret.ts';
 import { gunAnahtari, gunEkle, olusumlar } from './tarih.ts';
 import type { Etkinlik, Program, ProgramKosusu, ProgramOgesi, SureKipi } from './tipler.ts';
@@ -444,4 +445,103 @@ test('her sure kipi bir sonuc verir', () => {
     const b = bitisHesapla(PAZARTESI, k, 2, new Date(2026, 9, 1));
     assert.ok(b === null || b instanceof Date, `${k} icin gecersiz sonuc`);
   }
+});
+
+// ------------------------------------------------------------- sirali duzen
+
+function siraliProgram(adet: number, kosuUzer: Partial<ProgramKosusu> = {}): Program {
+  return ayar({
+    duzen: 'sirali',
+    ogeler: Array.from({ length: adet }, (_, i) =>
+      oge({ id: `o${i + 1}`, baslik: `Görev ${i + 1}`, gunler: [] }),
+    ),
+    kosu: kosu(kosuUzer),
+  });
+}
+
+/** Programin [bas, son] araligindaki gunlerini "gun:baslik" olarak dizer. */
+function takvim(p: Program, bas: Date, son: Date): string[] {
+  const liste: [number, string][] = [];
+  for (const o of p.ogeler) {
+    const e = ogeyiEtkinligeCevir(p, o, p.kosu!, bas);
+    if (!e) continue;
+    for (const an of olusumlar(e, bas, son)) liste.push([an.getTime(), `${gunAnahtari(an)}:${o.baslik}`]);
+  }
+  return liste.sort((a, b) => a[0] - b[0]).map(([, m]) => m);
+}
+
+test('sirali: on gorev gun gun, haftaya bagli degil', () => {
+  const p = siraliProgram(10);
+  const gunler = takvim(p, PAZARTESI, gunEkle(PAZARTESI, 9));
+  assert.equal(gunler.length, 10);
+  assert.equal(gunler[0], '2026-09-21:Görev 1');
+  assert.equal(gunler[9], '2026-09-30:Görev 10');
+});
+
+test('sirali: sinirsizda 11. gun 1. goreve doner', () => {
+  const p = siraliProgram(10);
+  const gunler = takvim(p, PAZARTESI, gunEkle(PAZARTESI, 10));
+  assert.equal(gunler[10], '2026-10-01:Görev 1');
+});
+
+test('sirali: tur arasi bekleme gunleri bos kalir', () => {
+  const p = siraliProgram(10, { ara_gun: 3 });
+  const gunler = takvim(p, PAZARTESI, gunEkle(PAZARTESI, 13));
+  // 10 gorev + 3 bos gun, 14. gun (indeks 13) yeniden Gorev 1.
+  assert.equal(gunler.length, 11);
+  assert.equal(gunler[10], '2026-10-04:Görev 1');
+});
+
+test('sirali: tur sayisi bitisi belirler, son turun beklemesi sayilmaz', () => {
+  const bitis = siraliBitisHesapla(PAZARTESI, siraliProgram(10).ogeler, 3, 4);
+  // 3 tam tur (13 gun) + son turun 10 gunu = 49 gun -> 21 Eyl + 48
+  assert.equal(gunAnahtari(bitis!), gunAnahtari(gunEkle(PAZARTESI, 48)));
+  assert.equal(siraliBitisHesapla(PAZARTESI, siraliProgram(10).ogeler, 3, null), null);
+
+  const p = siraliProgram(10, { ara_gun: 3, bitis: gunAnahtari(bitis!), kip: 'tur', tur: 4 });
+  const gunler = takvim(p, PAZARTESI, gunEkle(PAZARTESI, 120));
+  assert.equal(gunler.length, 40);
+  assert.equal(gunler.at(-1), `${gunAnahtari(bitis!)}:Görev 10`);
+});
+
+test('sirali: tek seferlik program 10 gunde biter', () => {
+  const bitis = siraliBitisHesapla(PAZARTESI, siraliProgram(10).ogeler, 0, 1)!;
+  const p = siraliProgram(10, { bitis: gunAnahtari(bitis), kip: 'tur', tur: 1 });
+  assert.equal(takvim(p, PAZARTESI, gunEkle(PAZARTESI, 60)).length, 10);
+});
+
+test('sirali: ileriden capa ayni ritme oturur', () => {
+  const p = siraliProgram(10, { ara_gun: 3 });
+  // 25 Eylul'den baslayarak Gorev 1'in ilk gunu ikinci turun basi.
+  const e = ogeyiEtkinligeCevir(p, p.ogeler[0]!, p.kosu!, gunEkle(PAZARTESI, 4));
+  assert.equal(e!.baslangic.slice(0, 10), gunAnahtari(gunEkle(PAZARTESI, 13)));
+  assert.equal(e!.tekrar.tip, 'gunluk');
+  assert.equal(e!.tekrar.aralik, 13);
+});
+
+test('sirali: ozet tur basina sayar', () => {
+  const p = siraliProgram(4);
+  const oz = programOzeti(p, [], SIMDI);
+  assert.equal(oz.haftalikOturum, 4);
+  assert.equal(oz.haftalikDakika, 240);
+});
+
+test('sirali: islerin arasina dinlenme gunu konabilir', () => {
+  // 1. gun calis, 2. gun dinlen, 3. gun calis; sonra 3 gun is, 3 gun dinlen;
+  // turlar arasi 4 gun daha.
+  const p = siraliProgram(5, { ara_gun: 4 });
+  p.ogeler[0]!.dinlenme_gun = 1;
+  p.ogeler[4]!.dinlenme_gun = 3;
+  const gunler = takvim(p, PAZARTESI, gunEkle(PAZARTESI, 13));
+  assert.deepEqual(gunler, [
+    '2026-09-21:Görev 1',
+    '2026-09-23:Görev 2',
+    '2026-09-24:Görev 3',
+    '2026-09-25:Görev 4',
+    '2026-09-26:Görev 5',
+    // 27-29 dinlenme, 30 Eyl - 3 Eki tur arasi bekleme
+    '2026-10-04:Görev 1',
+  ]);
+  const bitis = siraliBitisHesapla(PAZARTESI, p.ogeler, 4, 2)!;
+  assert.equal(gunAnahtari(bitis), '2026-10-09');
 });

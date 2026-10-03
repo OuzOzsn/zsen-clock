@@ -60,6 +60,100 @@ export function bitisHesapla(
   return gunEkle(gunBasi(baslangic), n * 7 - 1);
 }
 
+// ------------------------------------------------------------- sirali duzen
+
+/*
+ * Sirali programda ogeler listedeki sirayla gunlere dizilir. Her ogenin
+ * ardindan `dinlenme_gun` kadar bos gun gelebilir ("1 gun calis, 1 gun
+ * dinlen"). Liste bitince `ara_gun` kadar daha beklenir ve bastan alinir.
+ * Boylece her oge, `aralik = tur uzunlugu` olan TEK bir gunluk tekrar -
+ * haftalik duzendeki "bir oge = bir tekrarli etkinlik" karari burada da
+ * gecerli.
+ */
+
+export function siraliMi(program: Program): boolean {
+  return program.duzen === 'sirali';
+}
+
+function dinlenme(o: ProgramOgesi): number {
+  return Math.max(0, Math.floor(o.dinlenme_gun ?? 0));
+}
+
+/**
+ * Her ogenin turun kacinci gunune dustugu (0'dan) ve bir turun gun
+ * cinsinden uzunlugu: ogeler + aralarindaki dinlenmeler + tur arasi bekleme.
+ */
+export function siraliYerlesim(
+  ogeler: ProgramOgesi[],
+  araGun: number,
+): { ofset: Map<string, number>; uzunluk: number; sonOfset: number } {
+  const ofset = new Map<string, number>();
+  let gun = 0;
+  let sonOfset = 0;
+  for (const o of ogeler) {
+    ofset.set(o.id, gun);
+    sonOfset = gun;
+    gun += 1 + dinlenme(o);
+  }
+  return { ofset, uzunluk: Math.max(1, gun + Math.max(0, Math.floor(araGun))), sonOfset };
+}
+
+/**
+ * Sirali kosunun son gunu (bu gun dahil). `tur` bos ise sinirsiz -> null.
+ * Son turun son isinden sonraki dinlenme/bekleme sayilmaz: son is bitince
+ * program biter.
+ */
+export function siraliBitisHesapla(
+  baslangic: Date,
+  ogeler: ProgramOgesi[],
+  araGun: number,
+  tur: number | null,
+): Date | null {
+  if (tur === null || ogeler.length === 0) return null;
+  const n = Math.max(1, Math.floor(tur));
+  const { uzunluk, sonOfset } = siraliYerlesim(ogeler, araGun);
+  return gunEkle(gunBasi(baslangic), (n - 1) * uzunluk + sonOfset);
+}
+
+/** Sirali programda ogenin `gun`e dusup dusmedigi (kosu sinirlari haric). */
+function siraliGunuMu(program: Program, oge: ProgramOgesi, kosu: ProgramKosusu, gun: Date): boolean {
+  const { ofset, uzunluk } = siraliYerlesim(program.ogeler, kosu.ara_gun ?? 0);
+  const sira = ofset.get(oge.id);
+  if (sira === undefined) return false;
+  // Yaz saati gecislerinde gun 23/25 saat; yuvarlama bunu emer.
+  const fark = Math.round((gunBasi(gun).getTime() - isoCoz(kosu.baslangic).getTime()) / 86_400_000);
+  return fark >= sira && (fark - sira) % uzunluk === 0;
+}
+
+/** `capaGunu`ndan (dahil) itibaren ogenin ilk gunu. */
+function siraliIlkGun(
+  program: Program,
+  oge: ProgramOgesi,
+  kosu: ProgramKosusu,
+  capaGunu: Date,
+): Date | null {
+  const { ofset, uzunluk } = siraliYerlesim(program.ogeler, kosu.ara_gun ?? 0);
+  const sira = ofset.get(oge.id);
+  if (sira === undefined) return null;
+  const ilk = gunEkle(isoCoz(kosu.baslangic), sira);
+  const capa = gunBasi(capaGunu);
+  if (capa <= ilk) return ilk;
+  const fark = Math.round((capa.getTime() - ilk.getTime()) / 86_400_000);
+  return gunEkle(ilk, Math.ceil(fark / uzunluk) * uzunluk);
+}
+
+/** Ogenin programdaki gunlerinden biri mi - duzenden bagimsiz. */
+export function ogeninGunuMu(
+  program: Program,
+  oge: ProgramOgesi,
+  kosu: ProgramKosusu,
+  gun: Date,
+): boolean {
+  return siraliMi(program)
+    ? siraliGunuMu(program, oge, kosu, gun)
+    : oge.gunler.includes(haftaGunu(gun));
+}
+
 /** "HH:MM" -> [saat, dakika]. Bozuk girdide 09:00. */
 export function saatCoz(saat: string): [number, number] {
   const m = /^(\d{1,2}):(\d{2})$/.exec(saat.trim());
@@ -87,8 +181,13 @@ export function ogeyiEtkinligeCevir(
   kosu: ProgramKosusu,
   capaGunu: Date,
 ): Etkinlik | null {
-  const gunler = [...new Set(oge.gunler)].filter((g) => g >= 1 && g <= 7).sort((a, b) => a - b);
-  const ilkGun = ilkUyanGun(capaGunu, gunler);
+  const sirali = siraliMi(program);
+  const gunler = sirali
+    ? []
+    : [...new Set(oge.gunler)].filter((g) => g >= 1 && g <= 7).sort((a, b) => a - b);
+  const ilkGun = sirali
+    ? siraliIlkGun(program, oge, kosu, capaGunu)
+    : ilkUyanGun(capaGunu, gunler);
   if (!ilkGun) return null;
 
   const bitisGunu = kosu.bitis ? isoCoz(kosu.bitis) : null;
@@ -111,8 +210,8 @@ export function ogeyiEtkinligeCevir(
     bitis: bitis ? yerelISO(bitis) : null,
     tum_gun: false,
     tekrar: {
-      tip: 'haftalik',
-      aralik: 1,
+      tip: sirali ? 'gunluk' : 'haftalik',
+      aralik: sirali ? siraliYerlesim(program.ogeler, kosu.ara_gun ?? 0).uzunluk : 1,
       gunler,
       bitis_tarihi: kosu.bitis ?? null,
       istisnalar: [],
@@ -327,7 +426,7 @@ export function programUret(
     const oge = program.ogeler.find((o) => o.id === kopya.program!.oge_id);
     const kapsamda =
       !!oge &&
-      oge.gunler.includes(haftaGunu(gun)) &&
+      ogeninGunuMu(program, oge, kosu, gun) &&
       gunMetni >= basAnahtar &&
       (!bitisAnahtar || gunMetni <= bitisAnahtar);
     if (!kapsamda) {
@@ -441,7 +540,9 @@ export interface Sapma {
 
 export interface ProgramOzeti {
   haftalik: GunOzeti[];
+  /** Sirali duzende bir turdaki is sayisi. */
   haftalikOturum: number;
+  /** Sirali duzende bir turun toplam dakikasi. */
   haftalikDakika: number;
   /** Kosu boyunca toplam oturum; suresizde null. */
   toplamOturum: number | null;
@@ -473,8 +574,14 @@ export function programOzeti(
     });
   }
 
-  const haftalikOturum = haftalik.reduce((t, g) => t + g.ogeler.length, 0);
-  const haftalikDakika = haftalik.reduce((t, g) => t + g.dakika, 0);
+  // Sirali duzende "hafta" anlamsiz; ayni alanlar bir TURU anlatiyor.
+  const sirali = siraliMi(program);
+  const haftalikOturum = sirali
+    ? program.ogeler.length
+    : haftalik.reduce((t, g) => t + g.ogeler.length, 0);
+  const haftalikDakika = sirali
+    ? program.ogeler.reduce((t, o) => t + o.sure_dakika, 0)
+    : haftalik.reduce((t, g) => t + g.dakika, 0);
 
   const bos: ProgramOzeti = {
     haftalik,

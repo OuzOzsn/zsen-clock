@@ -4,7 +4,8 @@
    *
    * Ekranin ortasinda, odakli ve her zaman ustte acilir. Isi tek bir soruyu
    * sormak: "bu simdi mi, sonra mi?" Bu yuzden iki gercek dugme var -
-   * Tamamlandi ve Ertele. Kapatmak ucuncu siradadir ve sag ustte durur.
+   * Basliyorum ve Sonra hatirlat. "Tamamlandi" demiyoruz: alarm isin BASINDA
+   * caliyor, kullanici o an bitirmiyor, basliyor. Kapatmak ucuncu siradadir ve sag ustte durur.
    *
    * Ayni anda birden fazla hatirlatma calabilir (orn. PC uykudan uyandiginda),
    * o yuzden pencere bir kuyruk gosterir: ustte kacinci oldugu yazar.
@@ -219,7 +220,7 @@
           }}
           aria-expanded={ertelemeAcik}
         >
-          Ertele
+          Sonra hatırlat
           <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
             <path d="M2 4l3 3 3-3" stroke="currentColor" stroke-width="1.4"
               stroke-linecap="round" stroke-linejoin="round" />
@@ -229,15 +230,20 @@
           <div class="menu" role="menu">
             {#each ertelemeSecenekleri as dk (dk)}
               <button role="menuitem" onclick={() => ertele(dk)}>
-                {dk} dakika
+                {dk < 60 ? `${dk} dakika sonra` : '1 saat sonra'}
               </button>
             {/each}
           </div>
         {/if}
       </div>
 
-      <button class="dugme birincil" onclick={tamamla} disabled={!tuslarAcik}>
-        Tamamlandı
+      <button
+        class="dugme birincil"
+        onclick={tamamla}
+        disabled={!tuslarAcik}
+        title="Hatırlatmayı kapatır, işi takvimde yapıldı olarak işaretler"
+      >
+        {suanki.dakika_once < 0 ? 'Yaptım' : 'Başlıyorum'}
         {#if otomatikKalan !== null}
           <span class="oto zaman">{otomatikKalan}</span>
         {/if}
@@ -252,7 +258,10 @@
   .kabuk {
     position: relative;
     display: grid;
-    grid-template-rows: auto 1fr auto;
+    /* Orta satir minmax(0, 1fr): uzun notta 1fr icerige gore uzayip
+       dugmeleri pencerenin disina itiyordu. Simdi orta kisim kayiyor,
+       dugmeler hep gorunur. */
+    grid-template-rows: auto minmax(0, 1fr) auto;
     height: 100vh;
     background: var(--murekkep);
     border: 1px solid var(--ayrac-guclu);
@@ -316,9 +325,11 @@
 
   main {
     display: grid;
-    align-content: center;
+    /* safe: icerik sigmazsa ustten kirpilmasin, kaydirilabilsin. */
+    align-content: safe center;
     gap: var(--b2);
-    padding: 0 var(--b5);
+    padding: 0 var(--b5) var(--b2);
+    overflow-y: auto;
   }
   h1 {
     font-size: 26px;

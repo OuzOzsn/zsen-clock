@@ -198,7 +198,8 @@ pub fn alarmi_goster(app: &AppHandle, kacirilmis: bool, araya_girme: bool) {
         .center()
         .decorations(false)
         .always_on_top(!araya_girme)
-        .resizable(false)
+        // Uzun notlu alarmda kullanici pencereyi buyutebilsin.
+        .resizable(true)
         .skip_taskbar(false) // alarm gorev cubugunda gorunsun, kaybolmasin
         .focused(one_gel)
         .build();

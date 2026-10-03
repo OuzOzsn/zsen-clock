@@ -18,7 +18,7 @@
   import { gunAnahtari, haftaGunu, sureMetni } from '../lib/tarih.ts';
   import { AY_UZUN, GUN_KISA, GUN_UZUN, type Etkinlik, type TekrarTipi } from '../lib/tipler.ts';
   import { depo } from '../lib/veri.svelte.ts';
-  import Ikon from './Ikon.svelte';
+  import KategoriSecici from './KategoriSecici.svelte';
 
   interface Ozellikler {
     etkinlik: Etkinlik;
@@ -77,12 +77,36 @@
     void cagir('sesleri_listele').then((s) => (sesler = s));
   });
 
-  /** Yazilan ada karsilik gelen kategori - ikonu/rengi onizlemek icin. */
-  const secilenKategori = $derived(
-    depo.kategoriler.find(
-      (k) => k.ad.toLowerCase() === taslak.kategori.trim().toLowerCase(),
-    ),
+  /**
+   * Formun acildigi olusumun yapildi isareti. Gecmis gunler de dahil her
+   * zaman degistirilebilir: Ay/Hafta/Gun gorunumlerinde isaret kutusu yok,
+   * eski bir isi sonradan "yapildi" ya da "yapilmadi" demenin yolu burasi.
+   * Durumu depodaki kayittan okuyoruz, taslaktan degil - isaret aninda
+   * yaziliyor, kaydet beklemiyor.
+   */
+  const isaretAni = $derived(
+    yeniMi ? null : tekrarliMi ? (olusum ?? null) : isoCoz(etkinlik.baslangic),
   );
+  const yapildi = $derived.by(() => {
+    if (!isaretAni) return false;
+    const kayit = depo.etkinlikler.find((e) => e.id === taslak.id);
+    return !!kayit?.tamamlananlar.includes(yerelISO(isaretAni));
+  });
+
+  async function yapildiDegistir() {
+    if (!isaretAni) return;
+    const kayit = depo.etkinlikler.find((e) => e.id === taslak.id);
+    if (!kayit) return;
+    try {
+      await depo.tamamla(
+        { etkinlik: kayit, baslangic: isaretAni, bitis: null, tamamlandi: yapildi, renk: '' },
+        !yapildi,
+      );
+    } catch (e) {
+      hata = `İşaretlenemedi: ${e}`;
+    }
+  }
+
 
   const sure = $derived.by(() => {
     if (!baslangicAlani || !bitisAlani) return 0;
@@ -289,6 +313,8 @@
           {bagliProgram?.baslik ?? 'Program'}
           {#if programKopyasi}
             · bu güne özel
+          {:else if taslak.tekrar.tip === 'gunluk'}
+            · sıralı, {taslak.tekrar.aralik} günde bir
           {:else}
             · her {GUN_KISA.filter((_, i) => taslak.tekrar.gunler.includes(i)).join(', ')}
           {/if}
@@ -313,6 +339,32 @@
           Bu kayıt programın tekrar kuralını taşıyor; düzenlemesi Programlarım'dan yapılır.
         </p>
       {/if}
+    {/if}
+
+    {#if isaretAni}
+      <button
+        type="button"
+        class="yapildi"
+        class:acik={yapildi}
+        onclick={yapildiDegistir}
+        aria-pressed={yapildi}
+      >
+        <span class="kutu">
+          {#if yapildi}
+            <svg width="11" height="11" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+              <path d="M2.5 6.3l2.4 2.4 4.6-5" stroke="currentColor" stroke-width="1.8"
+                stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          {/if}
+        </span>
+        <span>
+          {yapildi ? 'Yapıldı' : 'Yapılmadı'}
+          <span class="yapildi-gun">
+            · {isaretAni.getDate()} {AY_UZUN[isaretAni.getMonth()]} {isaretAni.getFullYear()}
+          </span>
+        </span>
+        <span class="yapildi-ipucu">{yapildi ? 'geri almak için tıkla' : 'yapıldı işaretle'}</span>
+      </button>
     {/if}
 
     <label class="alan">
@@ -364,30 +416,10 @@
       <p class="sure-ipucu">{sureMetni(sure)} sürecek</p>
     {/if}
 
-    <label class="alan">
+    <div class="alan">
       <span class="etiket">Kategori</span>
-      <div class="kategori-alani">
-        {#if secilenKategori}
-          <span class="kategori-simge" style:color={secilenKategori.renk}>
-            {#if secilenKategori.ikon}
-              <Ikon ad={secilenKategori.ikon} boyut={14} />
-            {:else}
-              <span class="kategori-nokta" style:background={secilenKategori.renk}></span>
-            {/if}
-          </span>
-        {/if}
-        <input
-          readonly={programSerisi}
-          bind:value={taslak.kategori}
-          list="kategori-listesi"
-          placeholder="genel"
-          class:simgeli={!!secilenKategori}
-        />
-      </div>
-      <datalist id="kategori-listesi">
-        {#each depo.kategoriler as k (k.ad)}<option value={k.ad}></option>{/each}
-      </datalist>
-    </label>
+      <KategoriSecici bind:deger={taslak.kategori} salt={programSerisi} />
+    </div>
 
     <!-- ------------------------------------------------------- tekrar -->
     {#if programSerisi}
@@ -549,6 +581,47 @@
 </div>
 
 <style>
+  .yapildi {
+    display: flex;
+    align-items: center;
+    gap: var(--b2);
+    width: 100%;
+    padding: 7px var(--b3);
+    border: 1px solid var(--ayrac);
+    border-radius: var(--yuvarlak-dugme);
+    background: var(--murekkep-2);
+    font-size: 14px;
+    color: var(--kagit-2);
+    text-align: left;
+    transition: background var(--gecis-hizli), border-color var(--gecis-hizli);
+  }
+  .yapildi:hover { background: var(--murekkep-3); }
+  .yapildi.acik {
+    border-color: var(--zeytin);
+    background: var(--zeytin-sonuk);
+    color: var(--kagit);
+  }
+  .yapildi .kutu {
+    display: grid;
+    place-items: center;
+    width: 16px;
+    height: 16px;
+    flex: none;
+    border: 1.5px solid var(--kagit-3);
+    border-radius: 4px;
+  }
+  .yapildi.acik .kutu {
+    border-color: var(--zeytin);
+    background: var(--zeytin);
+    color: var(--murekkep);
+  }
+  .yapildi-gun { color: var(--kagit-3); }
+  .yapildi-ipucu {
+    margin-left: auto;
+    font-size: 12.5px;
+    color: var(--kagit-3);
+  }
+
   .program-rozeti {
     display: flex;
     align-items: center;
@@ -560,7 +633,7 @@
     border-radius: 0 var(--yuvarlak-dugme) var(--yuvarlak-dugme) 0;
   }
   .rozet-metin {
-    font-size: 11.5px;
+    font-size: 12.5px;
     color: var(--kagit-2);
     overflow: hidden;
     text-overflow: ellipsis;
@@ -568,14 +641,14 @@
   }
   .rozet-baglanti {
     flex: none;
-    font-size: 11.5px;
+    font-size: 12.5px;
     color: var(--pirinc);
     text-decoration: underline;
     text-underline-offset: 2px;
   }
   .program-not {
     margin: calc(-1 * var(--b2)) 0 0;
-    font-size: 11px;
+    font-size: 12px;
     line-height: 1.5;
     color: var(--kagit-3);
   }
@@ -585,21 +658,10 @@
     background: var(--murekkep);
     border: 1px dashed var(--ayrac);
     border-radius: var(--yuvarlak-dugme);
-    font-size: 12.5px;
+    font-size: 13.5px;
     color: var(--kagit-3);
   }
-  .onay-not { font-size: 11px; color: var(--kagit-3); }
-
-  .kategori-alani { position: relative; display: flex; align-items: center; }
-  .kategori-simge {
-    position: absolute;
-    left: var(--b3);
-    display: grid;
-    place-items: center;
-    pointer-events: none;
-  }
-  .kategori-nokta { width: 8px; height: 8px; border-radius: 2px; }
-  input.simgeli { padding-left: calc(var(--b3) + 20px); }
+  .onay-not { font-size: 12px; color: var(--kagit-3); }
 
   .perde {
     position: fixed;
@@ -615,7 +677,7 @@
     left: 50%;
     transform: translate(-50%, -50%);
     display: grid;
-    grid-template-rows: auto 1fr auto;
+    grid-template-rows: auto minmax(0, 1fr) auto;
     width: min(520px, calc(100vw - 48px));
     max-height: min(760px, calc(100vh - 48px));
     background: var(--murekkep-2);
@@ -647,7 +709,7 @@
 
   .alan { display: grid; gap: var(--b1); min-width: 0; }
   .etiket {
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 500;
     color: var(--kagit-3);
   }
@@ -659,7 +721,7 @@
     border: 1px solid var(--ayrac);
     border-radius: var(--yuvarlak-dugme);
     font: inherit;
-    font-size: 13px;
+    font-size: 14px;
     color: var(--kagit);
     outline: none;
     transition: border-color var(--gecis-hizli);
@@ -677,7 +739,7 @@
 
   .sure-ipucu {
     margin-top: calc(var(--b3) * -1 + 2px);
-    font-size: 11.5px;
+    font-size: 12.5px;
     color: var(--kagit-3);
   }
 
@@ -695,7 +757,7 @@
   }
 
   .kucuk-dugme {
-    font-size: 11.5px;
+    font-size: 12.5px;
     color: var(--pirinc);
     transition: color var(--gecis-hizli);
   }
@@ -707,7 +769,7 @@
     padding: 6px 0;
     border: 1px solid var(--ayrac);
     border-radius: var(--yuvarlak-dugme);
-    font-size: 11.5px;
+    font-size: 12.5px;
     color: var(--kagit-3);
     transition: all var(--gecis-hizli);
   }
@@ -727,13 +789,13 @@
   }
   .dakika { text-align: right; }
   .hatirlatma-metin {
-    font-size: 11.5px;
+    font-size: 12.5px;
     color: var(--kagit-3);
     white-space: nowrap;
   }
 
   .bos-not {
-    font-size: 11.5px;
+    font-size: 12.5px;
     color: var(--kagit-3);
     line-height: 1.5;
   }
@@ -742,14 +804,14 @@
     border-radius: 3px;
     background: var(--murekkep);
     font-family: var(--yazi-mono);
-    font-size: 11px;
+    font-size: 12px;
   }
 
   .hata {
     padding: var(--b2) var(--b3);
     border-left: 2px solid var(--kirmizi);
     background: var(--kirmizi-sonuk);
-    font-size: 12px;
+    font-size: 13px;
     color: var(--kagit);
   }
 
@@ -763,18 +825,18 @@
   }
 
   .sil-alani { display: flex; align-items: center; gap: var(--b2); }
-  .onay-metin { font-size: 11.5px; color: var(--kagit-2); }
+  .onay-metin { font-size: 12.5px; color: var(--kagit-2); }
   .sil {
     padding: 5px var(--b2);
     border-radius: var(--yuvarlak-dugme);
-    font-size: 12px;
+    font-size: 13px;
     color: var(--kirmizi);
     transition: background var(--gecis-hizli);
   }
   .sil:hover { background: var(--kirmizi-sonuk); }
   .vazgec {
     padding: 5px var(--b2);
-    font-size: 12px;
+    font-size: 13px;
     color: var(--kagit-3);
   }
   .vazgec:hover { color: var(--kagit-2); }
@@ -784,7 +846,7 @@
     height: 34px;
     padding: 0 var(--b4);
     border-radius: var(--yuvarlak-dugme);
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 500;
     transition: background var(--gecis-hizli), color var(--gecis-hizli);
   }

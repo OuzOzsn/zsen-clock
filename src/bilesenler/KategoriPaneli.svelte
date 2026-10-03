@@ -14,6 +14,7 @@
   import type { Kategori } from '../lib/tipler.ts';
   import { depo } from '../lib/veri.svelte.ts';
   import Ikon from './Ikon.svelte';
+  import MetinIcerik from './MetinIcerik.svelte';
 
   interface Ozellikler {
     onKapat: () => void;
@@ -48,6 +49,7 @@
       ad: '',
       renk: RENKLER[depo.kategoriler.length % RENKLER.length]!,
       ikon: 'etiket',
+      aciklama: '',
     };
   }
 
@@ -55,7 +57,7 @@
     hata = null;
     silinecek = null;
     eskiAd = k.ad;
-    taslak = { ad: k.ad, renk: k.renk, ikon: k.ikon ?? null };
+    taslak = { ad: k.ad, renk: k.renk, ikon: k.ikon ?? null, aciklama: k.aciklama ?? '' };
   }
 
   async function kaydet() {
@@ -67,7 +69,10 @@
     calisiyor = true;
     hata = null;
     try {
-      await depo.kategoriKaydet({ ...taslak, ad: taslak.ad.trim() }, eskiAd);
+      await depo.kategoriKaydet(
+        { ...taslak, ad: taslak.ad.trim(), aciklama: (taslak.aciklama ?? '').trim() },
+        eskiAd,
+      );
       taslak = null;
       eskiAd = null;
     } catch (e) {
@@ -108,7 +113,7 @@
   <header>
     <div>
       <h2>Kategoriler</h2>
-      <p class="alt">Renk ve ikon — takvimde bu işaretlerle görünür.</p>
+      <p class="alt">Ad, açıklama, renk ve ikon — takvimde bu işaretlerle görünür.</p>
     </div>
     <button class="ikon-dugme" onclick={onKapat} aria-label="Kapat">
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -127,7 +132,12 @@
         <li class="satir">
           <span class="nokta" style:background={k.renk}></span>
           <span class="simge" style:color={k.renk}><Ikon ad={k.ikon} boyut={15} /></span>
-          <span class="ad">{k.ad}</span>
+          <span class="ad">
+            {k.ad}
+            {#if k.aciklama}
+              <span class="aciklama"><MetinIcerik metin={k.aciklama} /></span>
+            {/if}
+          </span>
           <span class="adet">{etkinlikSayilari[k.ad] ?? 0}</span>
           <button class="kucuk" onclick={() => duzenleAc(k)}>Düzenle</button>
           <button
@@ -178,6 +188,16 @@
             placeholder="spor"
             onkeydown={(e) => { if (e.key === 'Enter') void kaydet(); }}
           />
+        </label>
+
+        <label class="alan">
+          <span class="etiket">Açıklama</span>
+          <textarea
+            bind:value={taslak.aciklama}
+            rows="4"
+            placeholder={'Bu kategori ne? Takvime yeni bakan biri ne bilmeli?\nÖrn: Kuantum mekaniği — dalga fonksiyonu, Schrödinger denklemi…\nhttps://kaynak-baglantisi'}
+          ></textarea>
+          <span class="ipucu">İsteğe bağlı. Kategorinin üzerine gelince ve etkinlik formunda görünür.</span>
         </label>
 
         <div class="alan">
@@ -275,7 +295,7 @@
     border-bottom: 1px solid var(--ayrac);
   }
   h2 { font-size: 14.5px; font-weight: 600; }
-  .alt { margin-top: 2px; font-size: 12px; color: var(--kagit-3); }
+  .alt { margin-top: 2px; font-size: 13px; color: var(--kagit-3); }
   .ikon-dugme {
     display: grid;
     place-items: center;
@@ -293,7 +313,7 @@
     padding: var(--b2) var(--b3);
     border-left: 2px solid var(--kirmizi);
     background: var(--kirmizi-sonuk);
-    font-size: 11.5px;
+    font-size: 12.5px;
     line-height: 1.5;
     color: var(--kagit-2);
   }
@@ -312,14 +332,21 @@
   .ad {
     flex: 1;
     min-width: 0;
-    font-size: 13px;
+    font-size: 14px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+  /* Aciklama satirin altinda tam gorunur: takvime yeni bakan kisi burayi
+     okumak icin aciyor. */
+  .aciklama {
+    display: block;
+    margin-top: 2px;
+    white-space: normal;
+  }
   .adet {
     font-family: var(--yazi-mono);
-    font-size: 11px;
+    font-size: 12px;
     color: var(--kagit-3);
   }
 
@@ -327,7 +354,7 @@
     padding: 3px var(--b2);
     border: 1px solid var(--ayrac);
     border-radius: var(--yuvarlak-dugme);
-    font-size: 11.5px;
+    font-size: 12.5px;
     color: var(--kagit-2);
     transition: color var(--gecis-hizli), border-color var(--gecis-hizli);
   }
@@ -343,7 +370,7 @@
     border-left: 2px solid var(--kirmizi);
     background: var(--kirmizi-sonuk);
     border-radius: 0 var(--yuvarlak-dugme) var(--yuvarlak-dugme) 0;
-    font-size: 12px;
+    font-size: 13px;
     line-height: 1.5;
     color: var(--kagit-2);
   }
@@ -356,9 +383,9 @@
     border: 1px solid var(--ayrac);
     border-radius: var(--yuvarlak-panel);
   }
-  .baslik { font-size: 12px; font-weight: 500; color: var(--kagit-2); }
+  .baslik { font-size: 13px; font-weight: 500; color: var(--kagit-2); }
   .alan { display: grid; gap: var(--b1); }
-  .etiket { font-size: 11px; font-weight: 500; color: var(--kagit-3); }
+  .etiket { font-size: 12px; font-weight: 500; color: var(--kagit-3); }
 
   input {
     width: 100%;
@@ -367,11 +394,25 @@
     border: 1px solid var(--ayrac);
     border-radius: var(--yuvarlak-dugme);
     font: inherit;
-    font-size: 13px;
+    font-size: 14px;
     color: var(--kagit);
     outline: none;
   }
-  input:focus { border-color: var(--pirinc); }
+  textarea {
+    width: 100%;
+    padding: 7px var(--b3);
+    background: var(--murekkep);
+    border: 1px solid var(--ayrac);
+    border-radius: var(--yuvarlak-dugme);
+    font: inherit;
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--kagit);
+    outline: none;
+    resize: vertical;
+  }
+  input:focus, textarea:focus { border-color: var(--pirinc); }
+  .ipucu { font-size: 11.5px; color: var(--kagit-3); }
 
   .renkler { display: flex; flex-wrap: wrap; gap: var(--b2); align-items: center; }
   .renk {
@@ -406,7 +447,7 @@
     height: 30px;
     border: 1px solid transparent;
     border-radius: var(--yuvarlak-dugme);
-    font-size: 12px;
+    font-size: 13px;
     color: var(--kagit-3);
     transition: background var(--gecis-hizli), color var(--gecis-hizli);
   }
@@ -418,7 +459,7 @@
     padding: 6px var(--b4);
     background: var(--pirinc);
     border-radius: var(--yuvarlak-dugme);
-    font-size: 12.5px;
+    font-size: 13.5px;
     font-weight: 500;
     color: var(--pirinc-ustu);
   }
@@ -432,7 +473,7 @@
     padding: 8px;
     border: 1px dashed var(--ayrac-guclu);
     border-radius: var(--yuvarlak-dugme);
-    font-size: 12.5px;
+    font-size: 13.5px;
     color: var(--kagit-2);
     transition: color var(--gecis-hizli), border-color var(--gecis-hizli);
   }
