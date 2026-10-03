@@ -174,6 +174,9 @@ async function sahte(komut: string, arg: unknown): Promise<never | unknown> {
 
     case 'etkinlik_kaydet': {
       const e = g!.etkinlik as Etkinlik;
+      // Rust tarafi gibi: yeni kayda kimlik ver, yoksa ikinci acilista
+      // form onu yine "yeni etkinlik" saniyor.
+      if (!e.id) e.id = `sahte-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
       const i = v.etkinlikler.findIndex((x) => x.id === e.id);
       if (i >= 0) v.etkinlikler[i] = e;
       else v.etkinlikler.push(e);
@@ -390,6 +393,13 @@ async function sahte(komut: string, arg: unknown): Promise<never | unknown> {
 
 
     case 'alarm_kuyrugu': {
+      // Testler (e2e/) kuyrugu buradan verir; yoksa tek ornek kayit.
+      try {
+        const test = localStorage.getItem('zsenclock-sahte-alarm');
+        if (test) return JSON.parse(test);
+      } catch {
+        /* yok say */
+      }
       // Tarayicida alarm penceresini gorebilmek icin tek ornek kayit.
       const o = new Date();
       o.setSeconds(0, 0);

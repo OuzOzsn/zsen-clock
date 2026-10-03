@@ -15,8 +15,8 @@ Windows uygulaması. Veritabanı yok — her şey `data/` klasöründe düz JSON
   **Sıralı** düzende işler haftadan bağımsız, listedeki sırayla her güne bir
   tane düşer; araya dinlenme günü, turlar arasına bekleme konabilir, liste
   bir kez, birkaç tur ya da sınırsız tekrarlanır.
-- **Çalışma planı sihirbazı** — konuları ve saatleri söyle, haftalarca sürecek
-  programı tek seferde üretsin. Ağırlık verebilirsin: `Matematik x3`.
+  Konulardan da kurulabilir: konuları ve günün düzenini söyle, günlere
+  kendisi dağıtsın. Ağırlık verebilirsin: `Matematik x3`.
 - **Taşınabilir** — klasörü kopyala, başka PC'de çalıştır; her şey gelir.
 
 ---
@@ -143,9 +143,10 @@ bir bilgisayarda da çalışır. İçe aktarılan program her zaman uykuda gelir
 başlangıç tarihini sen verirsin. Aynı adla ikinci bir program gelirse sonuna
 `(2)` eklenir.
 
-### Çalışma planı oluşturma
-Sol paneldeki **Çalışma planı oluştur** ile konuları, günleri ve seans düzenini
-verip toplu program üretebilirsin:
+### Konulardan program oluşturma
+Programlarım'daki **+** iki yol sunar: işleri **kendin** girersin ya da
+**konulardan oluştur**ursun. İkincisinde konuları, çalışma günlerini ve günün
+düzenini (günde kaç çalışma, süre, mola) verirsin:
 
 ```
 Matematik x3        ← üç kat sık gelsin
@@ -155,9 +156,12 @@ Coğrafya
 Vatandaşlık
 ```
 
-Konular döngüsel dağıtılır, aynı konu üst üste gelmez. Eklemeden önce kaç seans,
-kaç gün ve konu başına kaç ders düştüğünü gösterir. Üretilen kayıtlar tekrar
-kuralı değil tek tek etkinliktir — böylece bir günü serbestçe değiştirebilirsin.
+Konular dönüşümlü dağıtılır, aynı konu üst üste gelmez. Oluşturmadan önce bir
+turun kaç gün sürdüğünü ve konu başına kaç çalışma düştüğünü gösterir. Sonuç
+sıralı bir programdır: Programlarım'da durur, düzenlenir, durdurulur.
+
+Önceki sürümün "çalışma planları" takvimde kalır; Programlarım'ın altındaki
+**Eski planlar** listesinden topluca silinebilir.
 
 ### Zil sesi ekleme
 `data\sesler\` klasörüne mp3, wav veya ogg at. Uygulama otomatik listeler;
@@ -183,15 +187,30 @@ render, uygulamanın içindekiyle birebir aynı.
 
 ### Testler
 
-```bash
-# Türkçe doğal dil ayrıştırıcı, tarih/tekrar, plan ve program üretici
-node --test src/lib/dogalDil.test.ts src/lib/tarih.test.ts \
-            src/lib/planUret.test.ts src/lib/programUret.test.ts \
-            src/lib/programAktarim.test.ts
+Yayından önce **hepsi** geçmeli:
 
-# Çekirdek: tekrar kuralları, zamanlayıcı, dosya deposu, program modeli
-cd src-tauri/cekirdek && cargo test
+```bash
+npm run onay
 ```
+
+Sırayla: tip kontrolü → hesap testleri (`src/lib/*.test.ts`) → arayüz
+derlemesi → arayüz testleri (`e2e/`, Playwright; uygulama tarayıcıda sahte
+veriyle açılıp gerçekten tıklanır) → Rust çekirdek testleri (Docker içinde).
+Biri bile kalırsa "ONAY YOK" der ve hata koduyla çıkar.
+
+Release paketi tek komut (WSL/Linux terminalinde):
+
+```bash
+npm run paket
+```
+
+Önce testleri çalıştırır; geçerse imza şifresini sorar ve imzalı Windows
+build'ini alır. `dist-windows\` altındaki dört dosya GitHub release'ine
+yüklenir. PowerShell'den `build.ps1` de aynısını yapar (testler dahil).
+
+Yeni bir özellik eklenirken testi de aynı değişiklikte eklenir:
+mantık için `src/lib/` altına, arayüz için `e2e/` altına. İlk kurulumda
+Playwright'ın tarayıcısı için bir kez: `npx playwright install chromium`.
 
 ### Windows exe derlemek
 
@@ -234,7 +253,7 @@ indirme yapar; sonraki derlemeler önbellekten gelir.
 src/                      arayüz (Svelte 5 + TypeScript)
   pencereler/             Ana, Widget, Alarm — her biri ayrı HTML girişi
   bilesenler/             takvim görünümleri, form, hızlı ekleme
-  lib/                    dogalDil, planUret, programUret, tarih, ipc, tipler,
+  lib/                    dogalDil, konular, konudanProgram, programUret, tarih, ipc, tipler,
                           veri deposu
   stil/                   tasarım token'ları
 

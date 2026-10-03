@@ -31,6 +31,7 @@
       class:secili={secili(k.ad)}
       style:--renk={k.renk}
       role="radio"
+      aria-label={k.ad}
       aria-checked={secili(k.ad)}
       disabled={salt && !secili(k.ad)}
       title={k.aciklama || undefined}

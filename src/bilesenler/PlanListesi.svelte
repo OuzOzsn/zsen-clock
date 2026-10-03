@@ -42,7 +42,8 @@
 
 {#if planlar.length > 0}
   <div class="planlar">
-    <span class="panel-baslik">Planlar</span>
+    <span class="panel-baslik">Eski planlar</span>
+    <p class="eski-not">Önceki sürümün çalışma planları. Takvimde duruyorlar; buradan topluca silinebilir.</p>
 
     {#if hata}<p class="hata" role="alert">{hata}</p>{/if}
 
@@ -84,6 +85,7 @@
 {/if}
 
 <style>
+  .eski-not { margin: 0 0 var(--b1); padding: 0 var(--b2); font-size: 12px; line-height: 1.5; color: var(--kagit-3); }
   .planlar { display: grid; gap: 2px; align-self: start; }
   .panel-baslik {
     padding: 0 var(--b2) var(--b1);

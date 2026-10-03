@@ -18,12 +18,13 @@
   import KategoriPaneli from '../bilesenler/KategoriPaneli.svelte';
   import MiniTakvim from '../bilesenler/MiniTakvim.svelte';
   import PlanListesi from '../bilesenler/PlanListesi.svelte';
-  import PlanSihirbazi from '../bilesenler/PlanSihirbazi.svelte';
+  import KonudanProgram from '../bilesenler/KonudanProgram.svelte';
+  import ProgramTuruSec from '../bilesenler/ProgramTuruSec.svelte';
   import ProgramBaslat from '../bilesenler/ProgramBaslat.svelte';
   import ProgramDetay from '../bilesenler/ProgramDetay.svelte';
   import ProgramListesi from '../bilesenler/ProgramListesi.svelte';
   import ProgramPaneli from '../bilesenler/ProgramPaneli.svelte';
-  import { cagir, dinle } from '../lib/ipc.ts';
+  import { cagir, dinle, TAURI_ICINDE } from '../lib/ipc.ts';
   import { ayEkle, ayIzgarasi, gunBasi, gunEkle } from '../lib/tarih.ts';
   import { AY_UZUN, type Etkinlik, type Olusum, type Program } from '../lib/tipler.ts';
   import { depo, saatiBaslat } from '../lib/veri.svelte.ts';
@@ -37,6 +38,9 @@
   let gizliKategoriler = $state<Set<string>>(new Set());
   let ayarlarAcik = $state(false);
   let planAcik = $state(false);
+  let denemeMi = $state(false);
+  /** "Yeni program": once kurulus yolu seciliyor. */
+  let turSecimi = $state(false);
   let kategorilerAcik = $state(false);
   let programDuzenlenen = $state<Program | null>(null);
   /** Duzenleyici acilinca acik gelecek is (Ayrintilar'daki "Düzenle"). */
@@ -53,6 +57,13 @@
     void depo.yukle();
     void depo.dinlemeyeBasla();
     const temizle = dinle<null>('yeni-etkinlik', () => hizliEkle?.odaklan());
+    // Deneme build'i (build.ps1 -Deneme) gercek kurulumla karismasin diye
+    // markanin yaninda etiket tasiyor.
+    if (TAURI_ICINDE) {
+      void import('@tauri-apps/api/app')
+        .then((m) => m.getName())
+        .then((ad) => (denemeMi = ad.includes('Deneme')));
+    }
     // Acilisi yavaslatmasin; internet yoksa sessizce gecer.
     const guncellemeZamani = setTimeout(() => void guncelleme.denetle(), 5000);
     return () => {
@@ -190,7 +201,7 @@
       e.target instanceof HTMLElement &&
       ['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName);
     if (
-      alandaYaziyor || duzenlenen || ayarlarAcik || planAcik || kategorilerAcik ||
+      alandaYaziyor || duzenlenen || ayarlarAcik || planAcik || turSecimi || kategorilerAcik ||
       kurulumAcik || programDuzenlenen || programDetayi || programBaslatilan
     ) return;
 
@@ -214,7 +225,10 @@
   <!-- ------------------------------------------------------- yan panel -->
   <aside>
     <div class="marka">
-      <span class="marka-ad">Zsen Clock</span>
+      <span class="marka-ad">
+        Zsen Clock
+        {#if denemeMi}<span class="deneme" title="Test için derlenmiş sürüm; verisi kendi klasöründe">Deneme</span>{/if}
+      </span>
       {#if guncelleme.durum === 'var' || guncelleme.durum === 'indiriliyor'}
         <button
           class="guncelleme"
@@ -247,18 +261,13 @@
       onSec={(g) => (secili = g)}
     />
 
-    <button class="plan-dugme" onclick={() => (planAcik = true)}>
-      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-        <rect x="1.5" y="2.5" width="13" height="12" rx="1" stroke="currentColor" />
-        <path d="M1.5 6h13M5 1.5v2M11 1.5v2M4.5 9h3M4.5 11.5h5" stroke="currentColor"
-          stroke-linecap="round" />
-      </svg>
-      Çalışma planı oluştur
-    </button>
-
-    <PlanListesi />
-
-    <ProgramListesi onYeni={yeniProgram} onDetay={(p) => (programDetayi = p)} />
+    <!-- Tek kutu: kenar cubugu izgarasinda satir sayisi PlanListesi'nin
+         gorunup gorunmemesine gore kaymasin. -->
+    <div class="program-alani">
+      <ProgramListesi onYeni={() => (turSecimi = true)} onDetay={(p) => (programDetayi = p)} />
+      <!-- Eski "çalışma planı" kayitlari: yalnizca varsa gorunur, silmek icin. -->
+      <PlanListesi />
+    </div>
 
     <div class="kategoriler">
       <div class="kategori-basligi">
@@ -366,11 +375,13 @@
         {/each}
       </nav>
 
-      <button class="ok ayar" onclick={() => (ayarlarAcik = true)} aria-label="Ayarlar">
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-          <circle cx="8" cy="8" r="2.3" stroke="currentColor" stroke-width="1.3" />
-          <path d="M8 1.6v1.6M8 12.8v1.6M14.4 8h-1.6M3.2 8H1.6M12.5 3.5l-1.1 1.1M4.6 11.4l-1.1 1.1M12.5 12.5l-1.1-1.1M4.6 4.6L3.5 3.5"
-            stroke="currentColor" stroke-width="1.3" stroke-linecap="round" />
+      <button class="ok ayar" onclick={() => (ayarlarAcik = true)} aria-label="Ayarlar" title="Ayarlar (,)">
+        <!-- Ayar carki (Lucide "settings", ISC). Once gunes gibi bir simgeydi;
+             kullanici onu ayar olarak tanimadi. -->
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true"
+          stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+          <circle cx="12" cy="12" r="3" />
         </svg>
       </button>
     </header>
@@ -413,10 +424,21 @@
   <IlkKurulum onBitti={() => {}} />
 {/if}
 
+{#if turSecimi}
+  <ProgramTuruSec
+    onKapat={() => (turSecimi = false)}
+    onSec={(tur) => {
+      turSecimi = false;
+      if (tur === 'elle') yeniProgram();
+      else planAcik = true;
+    }}
+  />
+{/if}
+
 {#if planAcik}
-  <PlanSihirbazi
+  <KonudanProgram
     onKapat={() => (planAcik = false)}
-    onEklendi={(g) => { secili = gunBasi(g); gorunum = 'ay'; }}
+    onOlusturuldu={(p, g) => { secili = gunBasi(g); gorunum = 'ay'; programDetayi = p; }}
   />
 {/if}
 
@@ -480,7 +502,7 @@
   /* ---------------------------------------------------------- yan panel */
   aside {
     display: grid;
-    grid-template-rows: auto auto auto auto auto 1fr auto;
+    grid-template-rows: auto auto auto auto 1fr auto;
     gap: var(--b5);
     padding: var(--b4);
     background: var(--murekkep);
@@ -526,19 +548,17 @@
     color: var(--kagit-3);
   }
 
-  .plan-dugme {
-    display: flex;
-    align-items: center;
-    gap: var(--b2);
-    width: 100%;
-    padding: 8px var(--b3);
-    border: 1px solid var(--ayrac);
-    border-radius: var(--yuvarlak-dugme);
-    font-size: 13.5px;
-    color: var(--kagit-2);
-    transition: color var(--gecis-hizli), border-color var(--gecis-hizli);
+  .deneme {
+    margin-left: var(--b2);
+    padding: 1px 6px;
+    border: 1px solid var(--kat-2);
+    border-radius: 99px;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--kat-2);
+    vertical-align: 1px;
   }
-  .plan-dugme:hover { color: var(--kagit); border-color: var(--pirinc); }
+  .program-alani { display: grid; gap: var(--b4); align-self: start; }
 
   .kategoriler { align-self: start; }
   .metin-dugme {

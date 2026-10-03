@@ -2,9 +2,10 @@
  * Program sablonunu takvim etkinliklerine cevirir.
  *
  * Bir oge = BIR tekrarli etkinlik (`tekrar.tip = 'haftalik'`). Somut etkinlik
- * uretmiyoruz; planUret.ts'in tersi karar. Orada konular gunden gune DONDUGU
- * icin tek bir tekrar kurali yetmiyordu, burada her ogenin icerigi haftadan
- * haftaya sabit. Kazanci buyuk: "suresiz" program bedava geliyor ve
+ * uretmiyoruz. Haftalik duzende her ogenin icerigi haftadan haftaya sabit;
+ * sirali duzende de her oge kendi gunune duser, yalnizca aralik farkli (bkz.
+ * siraliYerlesim). Gunden gune konu degistiren eski "calisma plani" bu
+ * sayede programa devredildi (konudanProgram.ts). Kazanci buyuk: "suresiz" program bedava geliyor ve
  * zamanlayicinin (cekirdek/zamanlayici.rs) programdan haberi olmasi
  * gerekmiyor - zaten tekrar kurallarini isliyor.
  *
@@ -63,9 +64,11 @@ export function bitisHesapla(
 // ------------------------------------------------------------- sirali duzen
 
 /*
- * Sirali programda ogeler listedeki sirayla gunlere dizilir. Her ogenin
- * ardindan `dinlenme_gun` kadar bos gun gelebilir ("1 gun calis, 1 gun
- * dinlen"). Liste bitince `ara_gun` kadar daha beklenir ve bastan alinir.
+ * Sirali programda ogeler listedeki sirayla gunlere dizilir. `ayni_gun`
+ * isaretli oge bir oncekiyle ayni gune duser (gunde birden cok calisma).
+ * Bir ogenin ardindan `dinlenme_gun` kadar bos gun gelebilir ("1 gun calis,
+ * 1 gun dinlen"); ayni gunun birden cok isinde dinlenmeler toplanip gunun
+ * sonuna eklenir. Liste bitince `ara_gun` kadar daha beklenir ve bastan alinir.
  * Boylece her oge, `aralik = tur uzunlugu` olan TEK bir gunluk tekrar -
  * haftalik duzendeki "bir oge = bir tekrarli etkinlik" karari burada da
  * gecerli.
@@ -89,13 +92,18 @@ export function siraliYerlesim(
 ): { ofset: Map<string, number>; uzunluk: number; sonOfset: number } {
   const ofset = new Map<string, number>();
   let gun = 0;
-  let sonOfset = 0;
-  for (const o of ogeler) {
+  let bekleyen = 0;
+  ogeler.forEach((o, i) => {
+    if (i > 0 && !o.ayni_gun) {
+      gun += 1 + bekleyen;
+      bekleyen = 0;
+    }
     ofset.set(o.id, gun);
-    sonOfset = gun;
-    gun += 1 + dinlenme(o);
-  }
-  return { ofset, uzunluk: Math.max(1, gun + Math.max(0, Math.floor(araGun))), sonOfset };
+    bekleyen += dinlenme(o);
+  });
+  const sonOfset = gun;
+  const uzunluk = ogeler.length === 0 ? 1 : sonOfset + 1 + bekleyen;
+  return { ofset, uzunluk: Math.max(1, uzunluk + Math.max(0, Math.floor(araGun))), sonOfset };
 }
 
 /**

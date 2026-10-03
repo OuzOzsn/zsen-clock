@@ -103,8 +103,8 @@
   {#if hata}<p class="hata" role="alert">{hata}</p>{/if}
 
   {#if programlar.length === 0}
-    <p class="bos">Henüz program yok. Haftalık bir düzen oluşturup istenen
-      tarihte başlatılabilir.</p>
+    <p class="bos">Henüz program yok. <strong>+</strong> ile ekle: işleri kendin
+      girebilir ya da konulardan otomatik dağıttırabilirsin.</p>
   {:else}
     {#each programlar as p (p.id)}
       <button class="program" onclick={() => onDetay(p)} title="Ayrıntılar">

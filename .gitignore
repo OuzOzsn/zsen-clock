@@ -4,3 +4,7 @@ dist-windows/
 src-tauri/target/
 data/
 *.log
+
+# Playwright ciktilari
+test-results/
+playwright-report/

@@ -96,6 +96,8 @@ export interface ProgramOgesi {
   hatirlatmalar: Hatirlatma[];
   /** Yalnizca sirali duzende: bu isten sonra kac gun bos kalir. */
   dinlenme_gun?: number;
+  /** Yalnizca sirali duzende: onceki isle ayni gune duser (gunde birden cok is). */
+  ayni_gun?: boolean;
 }
 
 export interface ProgramKosusu {

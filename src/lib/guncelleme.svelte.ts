@@ -30,7 +30,23 @@ class Guncelleme {
   #bulunan: { downloadAndInstall: (cb?: (o: OlayTipi) => void) => Promise<void> } | null = null;
 
   async denetle() {
-    if (!TAURI_ICINDE || this.durum === 'bakiliyor' || this.durum === 'indiriliyor') return;
+    if (this.durum === 'bakiliyor' || this.durum === 'indiriliyor') return;
+    if (!TAURI_ICINDE) {
+      // Tarayici onizlemesi: testler (e2e/) "yeni surum var" durumunu buradan
+      // kuruyor. Gercek uygulamada bu dal hic calismaz.
+      try {
+        const test = localStorage.getItem('zsenclock-sahte-guncelleme');
+        if (test) {
+          const { surum, kurulu } = JSON.parse(test) as { surum: string; kurulu: boolean };
+          this.yeniSurum = surum;
+          this.kurulu = kurulu;
+          this.durum = 'var';
+        }
+      } catch {
+        /* yok say */
+      }
+      return;
+    }
     this.durum = 'bakiliyor';
     this.hata = null;
     try {
@@ -55,6 +71,10 @@ class Guncelleme {
 
   /** Indirir ve kurar. Windows'ta kurulum sirasinda uygulama kapanip yeniden acilir. */
   async kur() {
+    if (!TAURI_ICINDE) {
+      this.durum = 'indiriliyor';
+      return;
+    }
     if (!this.kurulu) {
       await cagir('baglanti_ac', { url: RELEASE_SAYFASI });
       return;

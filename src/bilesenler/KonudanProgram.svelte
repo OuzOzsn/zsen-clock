@@ -1,113 +1,144 @@
 <script lang="ts">
   /**
-   * Calisma plani sihirbazi.
+   * "Konulardan oluştur": konular ve gunun duzeninden bir SIRALI program
+   * kurar ve baslatir.
    *
-   * Konulari, gunleri ve saatleri alip takvime toplu kayit uretir. Onemli
-   * nokta: kullanici "Takvime ekle" demeden hicbir sey yazilmiyor ve ustte
-   * ne uretilecegi (kac gun, kac seans, konu dagilimi) surekli guncelleniyor.
-   * Yuzlerce kayit ureten bir islemde onizleme olmadan guven olmaz.
+   * Eskiden "çalışma planı" sihirbaziydi ve takvime sonradan duzenlenemeyen
+   * tek tek etkinlikler yaziyordu; program ile ne farki oldugu anlasilmiyordu.
+   * Artik sonuc siradan bir program: Programlarım'da gorunur, duzenlenir,
+   * durdurulur, ilerlemesi izlenir. Hesap konudanProgram.ts'te.
+   *
+   * Kullanici "Oluştur" demeden hicbir sey yazilmiyor; altta ne uretilecegi
+   * (bir tur kac gun, konu dagilimi, bitis) surekli guncelleniyor.
    */
-  import { konulariCoz, planUret, type PlanAyari } from '../lib/planUret.ts';
-  import { gunBasi, gunEkle, saatBicim } from '../lib/tarih.ts';
-  import { GUN_KISA } from '../lib/tipler.ts';
+  import { konulariCoz } from '../lib/konular.ts';
+  import { konulardanOgeler } from '../lib/konudanProgram.ts';
+  import { siraliBitisHesapla } from '../lib/programUret.ts';
+  import { gunAnahtari, gunBasi, saatBicim } from '../lib/tarih.ts';
+  import { AY_UZUN, GUN_KISA, type Program } from '../lib/tipler.ts';
   import { depo } from '../lib/veri.svelte.ts';
   import { isoCoz } from '../lib/ipc.ts';
+  import KategoriSecici from './KategoriSecici.svelte';
 
   interface Ozellikler {
     onKapat: () => void;
-    /** Plan eklendikten sonra takvimi o tarihe goturmek icin. */
-    onEklendi: (ilkGun: Date) => void;
+    /** Program kurulup baslatildiktan sonra. */
+    onOlusturuldu: (p: Program, ilkGun: Date) => void;
   }
-  let { onKapat, onEklendi }: Ozellikler = $props();
+  let { onKapat, onOlusturuldu }: Ozellikler = $props();
 
   const bugun = gunBasi(new Date());
-  const tarihMetni = (d: Date) =>
-    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
-      d.getDate(),
-    ).padStart(2, '0')}`;
 
-  let ad = $state('Çalışma planı');
+  let ad = $state('Çalışma programı');
+  let kategori = $state('ders');
   let konuMetni = $state('');
-  let baslangic = $state(tarihMetni(gunEkle(bugun, 1)));
-  let bitis = $state(tarihMetni(gunEkle(bugun, 30)));
+  let baslangicAlani = $state(gunAnahtari(bugun));
   let gunler = $state<number[]>([1, 2, 3, 4, 5]);
-  let seansSayisi = $state(2);
+  let gunlukAdet = $state(2);
   let ilkSaat = $state('09:00');
-  let seansDakika = $state(60);
-  let molaDakika = $state(15);
+  let sureDakika = $state(50);
+  let molaDakika = $state(10);
   let hatirlatmaVar = $state(true);
   let hatirlatmaDakika = $state(10);
+  let turKipi = $state<'tek' | 'tur' | 'sinirsiz'>('sinirsiz');
+  let turSayisi = $state(4);
 
-  let ekleniyor = $state(false);
+  let calisiyor = $state(false);
   let hata = $state<string | null>(null);
 
   const konular = $derived(konulariCoz(konuMetni));
+  const tur = $derived(
+    turKipi === 'tek' ? 1 : turKipi === 'tur' ? Math.max(1, Math.floor(turSayisi)) : null,
+  );
 
-  const ayar = $derived<PlanAyari>({
-    ad: ad.trim() || 'Çalışma planı',
-    konular,
-    baslangic: isoCoz(baslangic),
-    bitis: isoCoz(bitis),
-    gunler,
-    seansSayisi,
-    ilkSaat,
-    seansDakika,
-    molaDakika,
-    hatirlatmaDakika: hatirlatmaVar ? hatirlatmaDakika : -1,
-  });
+  let sayac = 0;
+  const kimlik = () => `${Date.now().toString(36)}-${(sayac++).toString(36)}`;
 
-  const sonuc = $derived(konular.length > 0 && gunler.length > 0 ? planUret(ayar) : null);
+  const sonuc = $derived(
+    konulardanOgeler(
+      {
+        konular,
+        gunler,
+        baslangic: isoCoz(baslangicAlani),
+        gunlukAdet,
+        ilkSaat,
+        sureDakika,
+        molaDakika,
+        hatirlatmaDakika: hatirlatmaVar ? hatirlatmaDakika : -1,
+      },
+      kimlik,
+    ),
+  );
 
-  /** Ilk gunun seans saatleri - "gunun neye benzeyecegi" ipucu. */
+  const bitis = $derived(
+    sonuc.ilkGun ? siraliBitisHesapla(sonuc.ilkGun, sonuc.ogeler, 0, tur) : null,
+  );
+
+  /** Bir gunun calisma saatleri - "gunun neye benzeyecegi" ipucu. */
   const ornekGun = $derived.by(() => {
     const [s, d] = ilkSaat.split(':').map(Number);
-    const adim = seansDakika + molaDakika;
-    return Array.from({ length: seansSayisi }, (_, i) => {
+    const adim = sureDakika + molaDakika;
+    return Array.from({ length: Math.max(1, gunlukAdet) }, (_, i) => {
       const t = new Date(2000, 0, 1, s ?? 9, (d ?? 0) + i * adim);
-      const bit = new Date(t.getTime() + seansDakika * 60000);
+      const bit = new Date(t.getTime() + sureDakika * 60000);
       return `${saatBicim(t)}–${saatBicim(bit)}`;
     });
   });
+
+  const kisaTarih = (d: Date) => `${d.getDate()} ${AY_UZUN[d.getMonth()]!.slice(0, 3)}`;
 
   function gunDegistir(g: number) {
     gunler = gunler.includes(g) ? gunler.filter((x) => x !== g) : [...gunler, g].sort();
   }
 
-  async function ekle() {
-    if (!sonuc || sonuc.etkinlikler.length === 0) return;
+  async function olustur() {
+    if (sonuc.ogeler.length === 0 || !sonuc.ilkGun) return;
     hata = null;
-    ekleniyor = true;
+    calisiyor = true;
     try {
-      // Tek tek kaydediyoruz; her kayit diske atomik yaziliyor.
-      for (const e of sonuc.etkinlikler) {
-        await depo.kaydet(e);
-      }
-      onEklendi(isoCoz(sonuc.etkinlikler[0]!.baslangic));
+      const { program } = await depo.programKaydet({
+        id: '',
+        baslik: ad.trim() || 'Çalışma programı',
+        aciklama: '',
+        kategori: kategori.trim() || 'genel',
+        duzen: 'sirali',
+        ogeler: $state.snapshot(sonuc.ogeler),
+        kosu: null,
+      });
+      const { program: calisan } = await depo.programBaslat(
+        program,
+        sonuc.ilkGun,
+        tur === null ? 'suresiz' : 'tur',
+        0,
+        null,
+        { tur, araGun: 0 },
+      );
+      onOlusturuldu(calisan, sonuc.ilkGun);
       onKapat();
     } catch (e) {
-      hata = `Eklenemedi: ${e}`;
+      hata = `Oluşturulamadı: ${e}`;
     } finally {
-      ekleniyor = false;
+      calisiyor = false;
     }
   }
 </script>
 
-<svelte:window onkeydown={(e) => { if (e.key === 'Escape' && !ekleniyor) onKapat(); }} />
+<svelte:window onkeydown={(e) => { if (e.key === 'Escape' && !calisiyor) onKapat(); }} />
 
 <div
   class="perde"
   role="button"
   tabindex="-1"
   aria-label="Kapat"
-  onclick={() => !ekleniyor && onKapat()}
+  onclick={() => !calisiyor && onKapat()}
   onkeydown={(e) => { if (e.key === 'Enter') onKapat(); }}
 ></div>
 
-<div class="panel" role="dialog" aria-modal="true" aria-label="Çalışma planı oluştur">
+<div class="panel" role="dialog" aria-modal="true" aria-label="Konulardan program oluştur">
   <header>
     <div>
-      <h2>Çalışma planı oluştur</h2>
-      <p class="alt">Konular ve saatlerden haftalık bir program üretilir.</p>
+      <h2>Konulardan program oluştur</h2>
+      <p class="alt">Konular günlere dönüşümlü dağıtılır; sonuç düzenlenebilir bir program olur.</p>
     </div>
     <button class="ikon" onclick={onKapat} aria-label="Kapat">
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -118,10 +149,14 @@
 
   <div class="govde">
     <label class="alan">
-      <span class="etiket">Plan adı</span>
-      <input bind:value={ad} placeholder="Çalışma planı" />
-      <span class="ipucu">Kategori olarak da kullanılır, takvimde bu renkle görünür.</span>
+      <span class="etiket">Program adı</span>
+      <input bind:value={ad} placeholder="Çalışma programı" />
     </label>
+
+    <div class="alan">
+      <span class="etiket">Kategori</span>
+      <KategoriSecici bind:deger={kategori} />
+    </div>
 
     <label class="alan">
       <span class="etiket">Konular — her satıra bir tane</span>
@@ -133,23 +168,12 @@
       ></textarea>
       <span class="ipucu">
         Yanına <code>x2</code> yazılan konu iki kat sık gelir. Sıra
-        döngüsel dağıtılır, aynı konu üst üste gelmez.
+        dönüşümlü dağıtılır, aynı konu üst üste gelmez.
       </span>
     </label>
 
-    <div class="ikili">
-      <label class="alan">
-        <span class="etiket">Başlangıç</span>
-        <input type="date" bind:value={baslangic} />
-      </label>
-      <label class="alan">
-        <span class="etiket">Bitiş</span>
-        <input type="date" bind:value={bitis} />
-      </label>
-    </div>
-
     <div class="alan">
-      <span class="etiket">Hangi günler</span>
+      <span class="etiket">Çalışma günleri</span>
       <div class="gun-secici">
         {#each [1, 2, 3, 4, 5, 6, 7] as g (g)}
           <button
@@ -160,6 +184,7 @@
           >{GUN_KISA[g]}</button>
         {/each}
       </div>
+      <span class="ipucu">Seçilmeyen günler dinlenme günü olur.</span>
     </div>
 
     <div class="bolum">
@@ -171,11 +196,11 @@
         </label>
         <label class="kucuk-alan">
           <span>Günde kaç çalışma</span>
-          <input type="number" min="1" max="12" bind:value={seansSayisi} />
+          <input type="number" min="1" max="12" bind:value={gunlukAdet} />
         </label>
         <label class="kucuk-alan">
           <span>Çalışma süresi (dk)</span>
-          <input type="number" min="10" max="240" step="5" bind:value={seansDakika} />
+          <input type="number" min="10" max="240" step="5" bind:value={sureDakika} />
         </label>
         <label class="kucuk-alan">
           <span>Mola (dk)</span>
@@ -200,45 +225,74 @@
       {/if}
     </label>
 
+    <div class="ikili">
+      <label class="alan">
+        <span class="etiket">Başlangıç</span>
+        <input type="date" bind:value={baslangicAlani} />
+      </label>
+      {#if turKipi === 'tur'}
+        <label class="alan">
+          <span class="etiket">Kaç tur</span>
+          <input type="number" min="1" max="520" bind:value={turSayisi} />
+        </label>
+      {/if}
+    </div>
+
+    <div class="alan">
+      <span class="etiket">Konular bitince</span>
+      <div class="kip-secici">
+        {#each [['tek', 'Bir kez'], ['tur', 'Tur sayısı'], ['sinirsiz', 'Baştan al, sınırsız']] as const as [deger, etiket] (deger)}
+          <button
+            type="button"
+            class="kip-dugme"
+            class:secili={turKipi === deger}
+            onclick={() => (turKipi = deger)}
+          >{etiket}</button>
+        {/each}
+      </div>
+    </div>
+
     {#if hata}
       <p class="hata" role="alert">{hata}</p>
     {/if}
   </div>
 
-  <!-- Onizleme: ne uretilecegi kaydetmeden once burada. -->
-  <div class="onizleme" class:bos={!sonuc || sonuc.etkinlikler.length === 0}>
-    {#if !sonuc || sonuc.etkinlikler.length === 0}
+  <!-- Onizleme: ne uretilecegi olusturmadan once burada. -->
+  <div class="onizleme" class:bos={sonuc.ogeler.length === 0}>
+    {#if sonuc.ogeler.length === 0}
       <span class="onizleme-bos">
         {konular.length === 0 ? 'Önce birkaç konu yaz.' : 'En az bir gün seç.'}
       </span>
     {:else}
       <div class="sayilar">
-        <span><strong class="zaman">{sonuc.etkinlikler.length}</strong> çalışma</span>
+        <span>1 tur: <strong class="zaman">{sonuc.calismaGunu}</strong> çalışma günü</span>
         <span class="ayrac-nokta"></span>
-        <span><strong class="zaman">{sonuc.gunSayisi}</strong> gün</span>
-        <span class="ayrac-nokta"></span>
-        <span>toplam <strong class="zaman">{sonuc.toplamSaat}</strong> saat</span>
+        <span><strong class="zaman">{sonuc.ogeler.length}</strong> çalışma</span>
+        {#if sonuc.ilkGun}
+          <span class="ayrac-nokta"></span>
+          <span>{kisaTarih(sonuc.ilkGun)} – {bitis ? kisaTarih(bitis) : 'sınırsız'}</span>
+        {/if}
       </div>
       <div class="dagilim">
-        {#each sonuc.konuDagilimi as k (k.ad)}
+        {#each sonuc.dagilim as k (k.ad)}
           <span class="pay"><span class="pay-ad">{k.ad}</span>
-            <span class="zaman">{k.seans}</span></span>
+            <span class="zaman">{k.adet}</span></span>
         {/each}
       </div>
     {/if}
   </div>
 
   <footer>
-    <button type="button" class="dugme ikincil" onclick={onKapat} disabled={ekleniyor}>
+    <button type="button" class="dugme ikincil" onclick={onKapat} disabled={calisiyor}>
       Vazgeç
     </button>
     <button
       type="button"
       class="dugme birincil"
-      onclick={ekle}
-      disabled={ekleniyor || !sonuc || sonuc.etkinlikler.length === 0}
+      onclick={olustur}
+      disabled={calisiyor || sonuc.ogeler.length === 0}
     >
-      {ekleniyor ? 'Ekleniyor…' : `Takvime ekle${sonuc ? ` (${sonuc.etkinlikler.length})` : ''}`}
+      {calisiyor ? 'Oluşturuluyor…' : 'Oluştur ve başlat'}
     </button>
   </footer>
 </div>
@@ -331,6 +385,23 @@
     background: var(--pirinc-sonuk);
     font-size: 12px;
     color: var(--kagit-2);
+  }
+
+  .kip-secici { display: flex; gap: 3px; }
+  .kip-dugme {
+    flex: 1;
+    padding: 6px 0;
+    border: 1px solid var(--ayrac);
+    border-radius: var(--yuvarlak-dugme);
+    font-size: 12.5px;
+    color: var(--kagit-3);
+    transition: all var(--gecis-hizli);
+  }
+  .kip-dugme:hover { color: var(--kagit-2); border-color: var(--ayrac-guclu); }
+  .kip-dugme.secili {
+    background: var(--pirinc);
+    border-color: var(--pirinc);
+    color: var(--pirinc-ustu);
   }
 
   .gun-secici { display: flex; gap: var(--b1); }

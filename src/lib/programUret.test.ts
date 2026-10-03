@@ -11,6 +11,7 @@ import {
   programUret,
   saatCoz,
   siraliBitisHesapla,
+  siraliYerlesim,
 } from './programUret.ts';
 import { gunAnahtari, gunEkle, olusumlar } from './tarih.ts';
 import type { Etkinlik, Program, ProgramKosusu, ProgramOgesi, SureKipi } from './tipler.ts';
@@ -544,4 +545,21 @@ test('sirali: islerin arasina dinlenme gunu konabilir', () => {
   ]);
   const bitis = siraliBitisHesapla(PAZARTESI, p.ogeler, 4, 2)!;
   assert.equal(gunAnahtari(bitis), '2026-10-09');
+});
+
+test('sirali: ayni gune birden cok is dusebilir', () => {
+  const p = siraliProgram(4);
+  p.ogeler[1]!.ayni_gun = true; // Gorev 1 ve 2 ayni gun
+  p.ogeler[1]!.dinlenme_gun = 1; // gunun sonunda 1 gun dinlenme
+  p.ogeler[3]!.ayni_gun = true; // Gorev 3 ve 4 ayni gun
+  const gunler = takvim(p, PAZARTESI, gunEkle(PAZARTESI, 4));
+  assert.deepEqual(gunler, [
+    '2026-09-21:Görev 1',
+    '2026-09-21:Görev 2',
+    '2026-09-23:Görev 3',
+    '2026-09-23:Görev 4',
+    '2026-09-24:Görev 1',
+    '2026-09-24:Görev 2',
+  ]);
+  assert.equal(siraliYerlesim(p.ogeler, 0).uzunluk, 3);
 });

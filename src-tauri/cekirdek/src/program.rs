@@ -8,9 +8,8 @@
 //! (`tekrar.tip = Haftalik`, `gunler = ogenin gunleri`). Somut etkinlik
 //! uretilmemesinin sebebi: "suresiz" program boyle bedava geliyor ve
 //! zamanlayicinin (zamanlayici.rs) program diye bir sey bilmesine gerek
-//! kalmiyor - zaten tekrar kurallarini isliyor. Karsilastirma icin bkz.
-//! src/lib/planUret.ts: orada konular gunden gune DONDUGU icin tersi karar
-//! verilmis, tek tek etkinlik uretiliyor.
+//! kalmiyor - zaten tekrar kurallarini isliyor. Sirali duzende de ayni: oge
+//! basina bir gunluk tekrar (bkz. ProgramDuzeni).
 //!
 //! Uretim mantiginin kendisi burada degil, arayuz tarafinda
 //! (src/lib/programUret.ts): uretim her zaman kullanici tetikli, boylece tek
@@ -118,6 +117,9 @@ pub struct ProgramOgesi {
     /// Yalnizca sirali duzende: bu isten sonra kac gun bos kalir.
     #[serde(default, skip_serializing_if = "sifir_mi")]
     pub dinlenme_gun: u32,
+    /// Yalnizca sirali duzende: onceki isle ayni gune duser.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub ayni_gun: bool,
 }
 
 fn sifir_mi(n: &u32) -> bool {
@@ -253,6 +255,7 @@ mod testler {
             sure_dakika: dakika,
             hatirlatmalar: Vec::new(),
             dinlenme_gun: 0,
+            ayni_gun: false,
         }
     }
 

@@ -58,6 +58,23 @@ echo "==> Cekirdek testleri"
 # Iki cikti var: tasinabilir exe (kopyala-calistir) ve NSIS kurulum dosyasi.
 # Kurulum dosyasi WebView2'yi icinde tasidigi icin ilk derlemede ~130 MB'lik
 # bir indirme yapiyor; /root/.cache/tauri hacimde tutuluyor, sonra onbellekten.
+# --- Deneme build'i ----------------------------------------------------
+# DENEME=1: kurulum dosyasi yok, imza yok; yalnizca "ZsenClock Deneme" exe'si.
+# Kimligi farkli oldugu icin kurulu ZsenClock acikken de yaninda calisir
+# (tek kopya kilidi kimlige bagli), verisi exe'nin yanindaki data\'da durur,
+# masaustu kisayolu ayri adla olusur. Test icin her seferinde setup kurmamak
+# icin var.
+if [ "${DENEME:-}" = "1" ]; then
+  echo "==> Deneme build'i (kurulumsuz, imzasiz)"
+  ZSEN_DENEME=1 cargo tauri build --target "$HEDEF" --no-bundle --config \
+    '{"identifier":"com.zsenclock.deneme","productName":"ZsenClock Deneme","bundle":{"createUpdaterArtifacts":false}}'
+  KAYNAK=src-tauri/target/$HEDEF/release
+  mkdir -p /cikti
+  cp "$KAYNAK/zsenclock.exe" "/cikti/ZsenClock-Deneme.exe"
+  echo "==> Deneme:     $(du -h /cikti/ZsenClock-Deneme.exe | cut -f1) -> dist-windows/ZsenClock-Deneme.exe"
+  exit 0
+fi
+
 # Guncelleyici icin kurulum dosyasi imzalaniyor. Anahtar repoda degil:
 # build.ps1 onu kullanicinin %USERPROFILE%\.tauri klasorunden salt okunur
 # baglar. Anahtar sifreli; sifre build.ps1'de sorulup ortam degiskeniyle

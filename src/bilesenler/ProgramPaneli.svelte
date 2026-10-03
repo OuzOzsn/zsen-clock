@@ -379,6 +379,17 @@
                 {/if}
               </div>
 
+              {#if sirali && i > 0}
+                <label class="ayni-gun">
+                  <input type="checkbox" bind:checked={oge.ayni_gun} />
+                  <span>
+                    Önceki işle aynı gün
+                    <span class="ipucu">Günde birden çok iş için: bu iş yeni bir güne geçmez,
+                      bir öncekinin gününe eklenir. Saatini ona göre ayarla.</span>
+                  </span>
+                </label>
+              {/if}
+
               {#if !sirali}
               <div class="alan">
                 <span class="etiket">Hangi günlerde tekrarlanır</span>
@@ -610,6 +621,16 @@
   }
   .ekle-is:hover { color: var(--pirinc); border-color: var(--pirinc); }
   .ekle-satiri { display: flex; gap: var(--b2); }
+  .ayni-gun {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--b2);
+    font-size: 13.5px;
+    color: var(--kagit-2);
+    cursor: pointer;
+  }
+  .ayni-gun input { margin-top: 3px; accent-color: var(--pirinc); }
+  .ayni-gun .ipucu { display: block; }
 
   .dinlenme {
     display: flex;

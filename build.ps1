@@ -5,13 +5,16 @@
     .\build.ps1            # derle
     .\build.ps1 -Yeniden   # Docker imajini sifirdan kur
     .\build.ps1 -Temizle   # ara katmanlari (cache volume'leri) sil
-    .\build.ps1 -Imzasiz   # imza sifresi sormadan deneme build'i
+    .\build.ps1 -Imzasiz   # imza sifresi sormadan, kurulumlu build
+    .\build.ps1 -Deneme    # test icin: kurulumsuz ZsenClock-Deneme.exe
 #>
 param(
     [switch]$Yeniden,
     [switch]$Temizle,
-    # Deneme build'i: imza anahtarini kullanma, sifre sorma. Release'e konmaz.
-    [switch]$Imzasiz
+    # Imza anahtarini kullanma, sifre sorma. Release'e konmaz.
+    [switch]$Imzasiz,
+    # Kurulumsuz "ZsenClock Deneme" exe'si: kurulu surumun yaninda calisir.
+    [switch]$Deneme
 )
 
 $ErrorActionPreference = 'Stop'
@@ -46,13 +49,24 @@ if ($Yeniden -or -not $Var) {
 
 New-Item -ItemType Directory -Force -Path $Cikti | Out-Null
 
+# Release build'inden once butun testler (scripts/onay.sh). Biri bile
+# kalirsa derleme baslamaz. Rust testlerini build.sh zaten kosuyor, burada
+# atlaniyor. Testler WSL'de calisiyor (node + Playwright orada kurulu).
+if (-not $Deneme) {
+    Adim 'Onay testleri (scripts/onay.sh)'
+    wsl.exe --cd "$Kok" -- bash -lc 'bash scripts/onay.sh --rustsuz'
+    if ($LASTEXITCODE -ne 0) { throw 'Testler gecmedi - release build alinmaz' }
+}
+
 # Guncelleme imza anahtari repoda degil, kullanicinin klasorunde duruyor.
 # Container'a salt okunur baglaniyor; yoksa imzasiz derlenir. Anahtar sifreli:
 # sifre burada sorulur, ortam degiskeniyle (degeri komut satirina yazilmadan)
 # container'a gecer ve is bitince silinir.
 $AnahtarKlasoru = Join-Path $env:USERPROFILE '.tauri'
 $AnahtarBagi = @()
-if (-not $Imzasiz -and (Test-Path (Join-Path $AnahtarKlasoru 'zsenclock-updater.key'))) {
+if ($Deneme) {
+    $AnahtarBagi = @('-e', 'DENEME=1')
+} elseif (-not $Imzasiz -and (Test-Path (Join-Path $AnahtarKlasoru 'zsenclock-updater.key'))) {
     $Gizli = Read-Host 'Guncelleme imza anahtarinin sifresi' -AsSecureString
     $env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD =
         [System.Net.NetworkCredential]::new('', $Gizli).Password
@@ -76,6 +90,11 @@ docker run --rm `
 $Kod = $LASTEXITCODE
 Remove-Item Env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD -ErrorAction SilentlyContinue
 if ($Kod -ne 0) { throw 'Derleme basarisiz' }
+
+if ($Deneme) {
+    Write-Host "`nDeneme: $(Join-Path $Cikti 'ZsenClock-Deneme.exe')" -ForegroundColor Green
+    exit 0
+}
 
 $Exe = Join-Path $Cikti 'ZsenClock.exe'
 $Mb  = [math]::Round((Get-Item $Exe).Length / 1MB, 1)

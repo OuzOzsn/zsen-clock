@@ -26,7 +26,14 @@ mod windows_impl {
     /// kullanilsa - bir ara oyleydi - kullanici kurulumda ve ilk acilista
     /// "evet" deyince masaustunde IKI kisayol olusuyor. Bu yuzden ad
     /// `productName` ile birebir ayni olmali; kaldirma da onu siliyor.
-    const KISAYOL_ADI: &str = "ZsenClock.lnk";
+    ///
+    /// Deneme build'i (build.sh DENEME=1) ayri bir adla kisayol koyar: yoksa
+    /// ilk acilistaki "kisayol olsun mu"ya evet demek gercek kurulumun
+    /// kisayolunu deneme exe'sine cevirirdi.
+    const KISAYOL_ADI: &str = match option_env!("ZSEN_DENEME") {
+        Some(_) => "ZsenClock Deneme.lnk",
+        None => "ZsenClock.lnk",
+    };
 
     fn genis(s: &str) -> Vec<u16> {
         s.encode_utf16().chain(std::iter::once(0)).collect()

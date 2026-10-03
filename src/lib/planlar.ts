@@ -3,7 +3,7 @@
  *
  * Plan diye ayri bir kayit tutulmuyor; uretilen etkinliklerin id'si
  * `plan-<damga>-<sira>` bicimde oldugu icin damga zaten plani isaretliyor
- * (bkz. planUret.ts). Boylece eski surumle uretilmis planlar da -- dosyaya
+ * (bkz. konular.ts). Boylece eski surumle uretilmis planlar da -- dosyaya
  * hicbir sey eklemeden -- topluca silinebiliyor.
  */
 
