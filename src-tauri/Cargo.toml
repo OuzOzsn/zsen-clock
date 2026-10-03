@@ -3,7 +3,7 @@ members = ["cekirdek"]
 
 [package]
 name = "zsenclock"
-version = "0.1.1"
+version = "0.1.2"
 description = "Zsen Clock - masaustu hatirlatici ve takvim uygulamasi"
 edition = "2021"
 license = "MIT"
@@ -25,6 +25,9 @@ tauri-plugin-dialog = "2"
 tauri-plugin-notification = "2"
 tauri-plugin-autostart = "2"
 tauri-plugin-single-instance = "2"
+# Uygulama ici guncelleme: GitHub release'indeki latest.json'a bakar, imzali
+# kurulum dosyasini indirip kurar. Imza anahtari repoda degil, bkz. build.ps1.
+tauri-plugin-updater = "2"
 
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

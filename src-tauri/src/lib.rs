@@ -36,6 +36,7 @@ pub fn run() {
             });
         }))
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_autostart::init(
@@ -44,6 +45,7 @@ pub fn run() {
         ))
         .invoke_handler(tauri::generate_handler![
             komutlar::etkinlikleri_getir,
+            komutlar::kurulu_mu,
             komutlar::etkinlik_kaydet,
             komutlar::etkinlik_sil,
             komutlar::etkinlikleri_sil,

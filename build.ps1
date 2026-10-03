@@ -5,10 +5,13 @@
     .\build.ps1            # derle
     .\build.ps1 -Yeniden   # Docker imajini sifirdan kur
     .\build.ps1 -Temizle   # ara katmanlari (cache volume'leri) sil
+    .\build.ps1 -Imzasiz   # imza sifresi sormadan deneme build'i
 #>
 param(
     [switch]$Yeniden,
-    [switch]$Temizle
+    [switch]$Temizle,
+    # Deneme build'i: imza anahtarini kullanma, sifre sorma. Release'e konmaz.
+    [switch]$Imzasiz
 )
 
 $ErrorActionPreference = 'Stop'
@@ -43,10 +46,24 @@ if ($Yeniden -or -not $Var) {
 
 New-Item -ItemType Directory -Force -Path $Cikti | Out-Null
 
+# Guncelleme imza anahtari repoda degil, kullanicinin klasorunde duruyor.
+# Container'a salt okunur baglaniyor; yoksa imzasiz derlenir. Anahtar sifreli:
+# sifre burada sorulur, ortam degiskeniyle (degeri komut satirina yazilmadan)
+# container'a gecer ve is bitince silinir.
+$AnahtarKlasoru = Join-Path $env:USERPROFILE '.tauri'
+$AnahtarBagi = @()
+if (-not $Imzasiz -and (Test-Path (Join-Path $AnahtarKlasoru 'zsenclock-updater.key'))) {
+    $Gizli = Read-Host 'Guncelleme imza anahtarinin sifresi' -AsSecureString
+    $env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD =
+        [System.Net.NetworkCredential]::new('', $Gizli).Password
+    $AnahtarBagi = @('-v', "${AnahtarKlasoru}:/anahtar:ro", '-e', 'TAURI_SIGNING_PRIVATE_KEY_PASSWORD')
+}
+
 # node_modules ve target dizinleri volume ile golgelenir:
 # Windows'taki node_modules platforma ozel ikililer icerir, container'da kullanilamaz.
 Adim 'Derleniyor'
 docker run --rm `
+    @AnahtarBagi `
     -v "${Kok}:/app" `
     -v zsenclock-node:/app/node_modules `
     -v zsenclock-target:/app/src-tauri/target `
@@ -56,7 +73,9 @@ docker run --rm `
     -v "${Cikti}:/cikti" `
     $Imaj bash docker/build.sh
 
-if ($LASTEXITCODE -ne 0) { throw 'Derleme basarisiz' }
+$Kod = $LASTEXITCODE
+Remove-Item Env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD -ErrorAction SilentlyContinue
+if ($Kod -ne 0) { throw 'Derleme basarisiz' }
 
 $Exe = Join-Path $Cikti 'ZsenClock.exe'
 $Mb  = [math]::Round((Get-Item $Exe).Length / 1MB, 1)
@@ -66,4 +85,7 @@ $Kurulum = Get-ChildItem -Path $Cikti -Filter '*-setup.exe' | Select-Object -Fir
 if ($Kurulum) {
     $KMb = [math]::Round($Kurulum.Length / 1MB, 1)
     Write-Host "Kurulum:     $($Kurulum.FullName) ($KMb MB)" -ForegroundColor Green
+}
+if (Test-Path (Join-Path $Cikti 'latest.json')) {
+    Write-Host "Guncelleme:  latest.json + .sig hazir - release'e kurulumla birlikte yukle" -ForegroundColor Green
 }

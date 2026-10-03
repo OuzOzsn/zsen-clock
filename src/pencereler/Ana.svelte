@@ -6,6 +6,7 @@
    * duzenledigin yer. Sol panelde ekleme ve gezinme, sagda secilen gorunum.
    */
   import { onMount } from 'svelte';
+  import { guncelleme } from '../lib/guncelleme.svelte.ts';
   import AjandaGorunumu from '../bilesenler/AjandaGorunumu.svelte';
   import AyarPaneli from '../bilesenler/AyarPaneli.svelte';
   import AyGorunumu from '../bilesenler/AyGorunumu.svelte';
@@ -52,7 +53,10 @@
     void depo.yukle();
     void depo.dinlemeyeBasla();
     const temizle = dinle<null>('yeni-etkinlik', () => hizliEkle?.odaklan());
+    // Acilisi yavaslatmasin; internet yoksa sessizce gecer.
+    const guncellemeZamani = setTimeout(() => void guncelleme.denetle(), 5000);
     return () => {
+      clearTimeout(guncellemeZamani);
       durdur();
       void temizle.then((f) => f());
     };
@@ -211,6 +215,21 @@
   <aside>
     <div class="marka">
       <span class="marka-ad">Zsen Clock</span>
+      {#if guncelleme.durum === 'var' || guncelleme.durum === 'indiriliyor'}
+        <button
+          class="guncelleme"
+          disabled={guncelleme.durum === 'indiriliyor'}
+          onclick={() => void guncelleme.kur()}
+          title={guncelleme.notlar || undefined}
+        >
+          {#if guncelleme.durum === 'indiriliyor'}
+            İndiriliyor{guncelleme.ilerleme !== null ? ` %${guncelleme.ilerleme}` : '…'}
+          {:else}
+            <span class="guncelleme-nokta"></span>
+            Yeni sürüm v{guncelleme.yeniSurum} — {guncelleme.kurulu ? 'Güncelle' : 'İndir'}
+          {/if}
+        </button>
+      {/if}
     </div>
 
     <HizliEkle
@@ -469,7 +488,29 @@
     overflow-y: auto;
   }
 
-  .marka { padding-bottom: 2px; }
+  .marka { display: grid; gap: var(--b2); padding-bottom: 2px; }
+  .guncelleme {
+    display: flex;
+    align-items: center;
+    gap: var(--b2);
+    padding: 6px var(--b3);
+    border: 1px solid var(--pirinc);
+    border-radius: var(--yuvarlak-dugme);
+    background: var(--pirinc-sonuk);
+    font-size: 12.5px;
+    color: var(--kagit);
+    text-align: left;
+  }
+  .guncelleme:hover:not(:disabled) { background: var(--pirinc); color: var(--pirinc-ustu); }
+  .guncelleme:disabled { cursor: default; }
+  .guncelleme-nokta {
+    width: 7px;
+    height: 7px;
+    flex: none;
+    border-radius: 50%;
+    background: var(--pirinc);
+  }
+  .guncelleme:hover .guncelleme-nokta { background: currentColor; }
   .marka-ad {
     font-size: 14px;
     font-weight: 600;

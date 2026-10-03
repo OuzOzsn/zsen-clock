@@ -12,12 +12,19 @@
   import { geriSayimParcali, gunBasi, gunEkle, saatBicim, sureMetni } from '../lib/tarih.ts';
   import { AY_UZUN, GUN_UZUN, type Olusum } from '../lib/tipler.ts';
   import { cagir, TAURI_ICINDE } from '../lib/ipc.ts';
+  import { guncelleme } from '../lib/guncelleme.svelte.ts';
 
   onMount(() => {
     const durdur = saatiBaslat();
     void depo.yukle();
     void depo.dinlemeyeBasla();
-    return durdur;
+    // Widget cogu zaman takvim penceresi kapaliyken acik duruyor; guncellemeyi
+    // kullanicinin gordugu tek yer burasi olabilir.
+    const guncellemeZamani = setTimeout(() => void guncelleme.denetle(), 5000);
+    return () => {
+      clearTimeout(guncellemeZamani);
+      durdur();
+    };
   });
 
   const simdi = $derived(depo.simdi);
@@ -132,6 +139,27 @@
       {/if}
     </div>
     <div class="baslik-eylem">
+      {#if guncelleme.durum === 'var' || guncelleme.durum === 'indiriliyor'}
+        <button
+          class="ikon guncelle"
+          disabled={guncelleme.durum === 'indiriliyor'}
+          onclick={() => void guncelleme.kur()}
+          title={guncelleme.durum === 'indiriliyor'
+            ? `Güncelleme indiriliyor${guncelleme.ilerleme !== null ? ` — %${guncelleme.ilerleme}` : '…'}`
+            : guncelleme.kurulu
+              ? `Yeni sürüm v${guncelleme.yeniSurum} — güncellemek için tıkla`
+              : `Yeni sürüm v${guncelleme.yeniSurum} — indirme sayfasını aç`}
+          aria-label="Güncelle"
+        >
+          <!-- asagi ok + tepsi: indir -->
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <path d="M8 2.5v7M5 6.8l3 3 3-3M2.5 10.5v2a1 1 0 001 1h9a1 1 0 001-1v-2"
+              stroke="currentColor" stroke-width="1.4" stroke-linecap="round"
+              stroke-linejoin="round" />
+          </svg>
+          <span class="bildirim" class:nabiz={guncelleme.durum === 'var'}></span>
+        </button>
+      {/if}
       <button
         class="ikon"
         onclick={kipDegistir}
@@ -361,6 +389,25 @@
     transition: color var(--gecis-hizli), background var(--gecis-hizli);
   }
   .ikon:hover { color: var(--kagit); background: var(--murekkep-3); }
+  /* Guncelleme: bildirim gibi mavi nokta. Kirmizi bu uygulamada "simdi /
+     gecikmis" demek, o yuzden mavi. */
+  .ikon.guncelle { position: relative; color: var(--kat-2); }
+  .ikon.guncelle:disabled { cursor: default; opacity: 0.7; }
+  .bildirim {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--kat-2);
+    box-shadow: 0 0 0 2px var(--murekkep);
+  }
+  .bildirim.nabiz { animation: bildirim-nabiz 2.4s ease-in-out infinite; }
+  @keyframes bildirim-nabiz {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(0.75); }
+  }
   .ikon.gizle:hover { color: var(--kirmizi); background: var(--kirmizi-sonuk); }
 
   /* --- Kahraman: geri sayim --- */

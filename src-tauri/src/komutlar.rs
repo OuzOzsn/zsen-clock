@@ -1033,6 +1033,20 @@ pub fn baglanti_ac(app: AppHandle, url: String) -> Sonuc<()> {
         .map_err(|e| e.to_string())
 }
 
+/// Kurulum dosyasiyla mi kuruldu, yoksa tasinabilir exe mi calisiyor?
+///
+/// Guncelleyici kurulum dosyasini calistiriyor; o da programi
+/// %LOCALAPPDATA%\ZsenClock'a kurar. Tasinabilir exe'de bu, verisi exe'nin
+/// yanindaki `data\`de duran kullaniciya ikinci, bos bir kopya kurmak olurdu.
+/// Kurulum klasorunde NSIS'in biraktigi uninstall.exe var; ona bakiyoruz.
+#[tauri::command]
+pub fn kurulu_mu() -> bool {
+    std::env::current_exe()
+        .ok()
+        .and_then(|e| e.parent().map(|d| d.join("uninstall.exe").exists()))
+        .unwrap_or(false)
+}
+
 #[tauri::command]
 pub fn veri_klasorunu_ac(app: AppHandle) -> Sonuc<()> {
     use tauri_plugin_opener::OpenerExt;

@@ -42,6 +42,11 @@ böyle: setup ~130 MB, ama her makinede aynı şekilde çalışır.
 otomatik başlayayım mı. İkisi de sonradan **Ayarlar › Başlangıç** altından
 değiştirilebilir; karşılama ekranı bir daha çıkmaz.
 
+**Güncelleme:** Yeni sürüm çıkınca widget'ın sağ üstünde mavi noktalı bir
+indirme simgesi, takvim penceresinde de "Yeni sürüm" düğmesi belirir. Tıklayınca
+imzalı kurulum indirilir ve kurulur; veriler yerinde kalır. Taşınabilir
+`ZsenClock.exe` kendini güncelleyemez; ona indirme sayfası açılır.
+
 İlk açılışta yanında bir `data\` klasörü oluşur:
 
 ```
@@ -200,6 +205,13 @@ Betik Docker imajını gerekirse kendisi kurar. Derleme Docker içinde, Linux
 üzerinde yapılır — bu makineye Rust, Node ya da Visual Studio Build Tools
 kurulmaz. İlk çalıştırmada Docker imajı (~5 dk) ve Windows
 SDK (~2 dk) hazırlanır, sonra her ikisi de önbellekten gelir.
+
+Release build'i güncelleme imzası taşır. İmza anahtarı depoda değil,
+`%USERPROFILE%\.tauri\zsenclock-updater.key` dosyasındadır ve şifrelidir; betik
+şifreyi sorar. Anahtar yoksa ya da `.\build.ps1 -Imzasiz` ile çalıştırılırsa
+imzasız derlenir: uygulama çalışır ama o build release'e konamaz. Release'e
+`dist-windows\` altındaki dört dosya yüklenir: `ZsenClock.exe`, kurulum, onun
+`.sig` dosyası ve `latest.json`.
 
 İki çıktı verir:
 

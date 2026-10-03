@@ -98,6 +98,8 @@ type Komutlar = {
   baglanti_ac: { girdi: { url: string }; cikti: void };
   /** Masaustunde kisayol dosyasi gercekten var mi. */
   kisayol_durumu: { girdi: void; cikti: boolean };
+  /** Kurulum dosyasiyla mi kuruldu (true), tasinabilir exe mi (false). */
+  kurulu_mu: { girdi: void; cikti: boolean };
   kisayol_ayarla: { girdi: { olsun: boolean }; cikti: void };
 };
 
@@ -366,6 +368,9 @@ async function sahte(komut: string, arg: unknown): Promise<never | unknown> {
       return undefined;
 
     case 'kisayol_durumu':
+      return false;
+
+    case 'kurulu_mu':
       return false;
 
     case 'kisayol_ayarla':

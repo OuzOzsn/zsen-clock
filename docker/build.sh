@@ -58,8 +58,28 @@ echo "==> Cekirdek testleri"
 # Iki cikti var: tasinabilir exe (kopyala-calistir) ve NSIS kurulum dosyasi.
 # Kurulum dosyasi WebView2'yi icinde tasidigi icin ilk derlemede ~130 MB'lik
 # bir indirme yapiyor; /root/.cache/tauri hacimde tutuluyor, sonra onbellekten.
+# Guncelleyici icin kurulum dosyasi imzalaniyor. Anahtar repoda degil:
+# build.ps1 onu kullanicinin %USERPROFILE%\.tauri klasorunden salt okunur
+# baglar. Anahtar sifreli; sifre build.ps1'de sorulup ortam degiskeniyle
+# geliyor (komut satirinda gorunmesin diye `-e AD` bicimiyle). Anahtar yoksa
+# (baskasinin klonu ya da `-Imzasiz`) imzasiz derlenir; uygulama yine
+# calisir, yalnizca o build'den release yayinlanamaz.
+ANAHTAR=/anahtar/zsenclock-updater.key
+IMZA_AYARI=()
+if [ -f "$ANAHTAR" ]; then
+  if [ -z "${TAURI_SIGNING_PRIVATE_KEY_PASSWORD:-}" ]; then
+    echo "HATA: imza anahtari sifreli ama sifre gelmedi (build.ps1 sormaliydi)"
+    exit 1
+  fi
+  echo "==> Guncelleme imzasi: $ANAHTAR"
+  export TAURI_SIGNING_PRIVATE_KEY="$(cat "$ANAHTAR")"
+else
+  echo "==> UYARI: imza anahtari yok, guncelleme dosyalari uretilmeyecek"
+  IMZA_AYARI=(--config '{"bundle":{"createUpdaterArtifacts":false}}')
+fi
+
 echo "==> Windows exe ve kurulum dosyasi derleniyor ($HEDEF)"
-cargo tauri build --target "$HEDEF" --bundles nsis
+cargo tauri build --target "$HEDEF" --bundles nsis "${IMZA_AYARI[@]}"
 
 KAYNAK=src-tauri/target/$HEDEF/release
 EXE=$(find "$KAYNAK" -maxdepth 1 -iname "*.exe" ! -iname "*build-script*" | head -1)
@@ -75,11 +95,37 @@ echo "==> Tasinabilir: $(du -h /cikti/ZsenClock.exe | cut -f1) -> dist-windows/Z
 KURULUM=$(find "$KAYNAK/bundle/nsis" -maxdepth 1 -iname "*-setup.exe" -printf '%T@ %p\n' 2>/dev/null \
   | sort -n | tail -1 | cut -d' ' -f2-)
 if [ -n "$KURULUM" ]; then
-  rm -f /cikti/*-setup.exe
+  rm -f /cikti/*-setup.exe /cikti/*-setup.exe.sig /cikti/latest.json
   cp "$KURULUM" /cikti/
   echo "==> Kurulum:    $(du -h "$KURULUM" | cut -f1) -> dist-windows/$(basename "$KURULUM")"
 else
   echo "HATA: kurulum dosyasi bulunamadi ($KAYNAK/bundle/nsis)"
   ls -la "$KAYNAK/bundle" 2>/dev/null || true
   exit 1
+fi
+
+# --- 6) Guncelleme dosyalari -------------------------------------------
+# Uygulama, son release'teki latest.json'a bakip yeni surumu buluyor
+# (tauri.conf.json > plugins.updater.endpoints). Release'e uc dosya yuklenir:
+# kurulum, imzasi (.sig) ve bu latest.json.
+if [ -f "$KURULUM.sig" ]; then
+  cp "$KURULUM.sig" /cikti/
+  SURUM=$(node -p "require('./src-tauri/tauri.conf.json').version")
+  AD=$(basename "$KURULUM")
+  SURUM="$SURUM" AD="$AD" IMZA="$(cat "$KURULUM.sig")" TARIH="$(date -u +%Y-%m-%dT%H:%M:%SZ)" node -e '
+    const { SURUM, AD, IMZA, TARIH } = process.env;
+    const json = {
+      version: SURUM,
+      notes: "",
+      pub_date: TARIH,
+      platforms: {
+        "windows-x86_64": {
+          signature: IMZA,
+          url: `https://github.com/OuzOzsn/zsen-clock/releases/download/v${SURUM}/${AD}`,
+        },
+      },
+    };
+    require("fs").writeFileSync("/cikti/latest.json", JSON.stringify(json, null, 2) + "\n");
+  '
+  echo "==> Guncelleme:  dist-windows/$AD.sig + dist-windows/latest.json (v$SURUM)"
 fi

@@ -11,6 +11,7 @@
   import { sesCal, type CalanSes } from '../lib/ses.ts';
   import type { Ayarlar } from '../lib/tipler.ts';
   import { depo } from '../lib/veri.svelte.ts';
+  import { guncelleme } from '../lib/guncelleme.svelte.ts';
 
   interface Ozellikler {
     onKapat: () => void;
@@ -26,10 +27,14 @@
   let sesHatasi = $state<string | null>(null);
 
   const a = $derived(depo.ayarlar);
+  let surum = $state<string | null>(null);
 
   onMount(() => {
     void cagir('sesleri_listele').then((s) => (sesler = s));
     void cagir('kisayol_durumu').then((v) => (kisayolVar = v));
+    if (TAURI_ICINDE) {
+      void import('@tauri-apps/api/app').then((m) => m.getVersion()).then((v) => (surum = v));
+    }
     return () => calan?.durdur();
   });
 
@@ -475,6 +480,44 @@
         Veri klasörünü aç
       </button>
     </section>
+
+    <!-- ------------------------------------------------------- guncelleme -->
+    <section>
+      <h3>Güncelleme</h3>
+      <p class="aciklama duz">
+        {#if surum}Kullandığın sürüm: <strong>v{surum}</strong>.{/if}
+        {#if guncelleme.durum === 'bakiliyor'}
+          Yeni sürüm aranıyor…
+        {:else if guncelleme.durum === 'guncel'}
+          En son sürüm bu.
+        {:else if guncelleme.durum === 'var'}
+          Yeni sürüm var: <strong>v{guncelleme.yeniSurum}</strong>.
+          {#if !guncelleme.kurulu}
+            Taşınabilir sürüm kendini güncelleyemez; indirme sayfası açılır,
+            yeni <code>ZsenClock.exe</code> eskisinin yerine konur.
+          {:else}
+            Güncelleme sırasında uygulama kapanıp yeniden açılır; veriler yerinde kalır.
+          {/if}
+        {:else if guncelleme.durum === 'indiriliyor'}
+          İndiriliyor{guncelleme.ilerleme !== null ? ` — %${guncelleme.ilerleme}` : '…'}
+        {:else if guncelleme.durum === 'hata'}
+          Güncelleme denetlenemedi ({guncelleme.hata}).
+        {/if}
+      </p>
+      {#if guncelleme.durum === 'var'}
+        <button class="dugme" onclick={() => void guncelleme.kur()}>
+          {guncelleme.kurulu ? `v${guncelleme.yeniSurum} sürümüne güncelle` : 'İndirme sayfasını aç'}
+        </button>
+      {:else}
+        <button
+          class="dugme"
+          disabled={guncelleme.durum === 'bakiliyor' || guncelleme.durum === 'indiriliyor'}
+          onclick={() => void guncelleme.denetle()}
+        >
+          Güncellemeleri denetle
+        </button>
+      {/if}
+    </section>
   </div>
 </div>
 
@@ -493,7 +536,7 @@
     left: 50%;
     transform: translate(-50%, -50%);
     display: grid;
-    grid-template-rows: auto 1fr;
+    grid-template-rows: auto minmax(0, 1fr);
     width: min(560px, calc(100vw - 48px));
     max-height: calc(100vh - 48px);
     background: var(--murekkep-2);
