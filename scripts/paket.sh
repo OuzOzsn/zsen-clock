@@ -19,17 +19,28 @@ if ! bash scripts/onay.sh --rustsuz; then
   exit 1
 fi
 
-# --- 2) Docker ve yollar -----------------------------------------------
-# WSL'de Windows'taki Docker Desktop kullaniliyor; o Windows yollari ister.
+# --- 2) Anahtar ve Docker ---------------------------------------------
+# Anahtar WSL'de Windows kullanici klasorunde durur (build.ps1 de oradan
+# okuyor); Docker'in nasil erisildiginden bagimsiz. Bir ara Docker'a bakip
+# karar veriyordu: WSL entegrasyonu acik makinede anahtari ~/.tauri'de arayip
+# bulamiyordu.
+if [ -n "${ZSEN_ANAHTAR_KLASORU:-}" ]; then
+  ANAHTAR_KLASORU=$ZSEN_ANAHTAR_KLASORU
+elif command -v wslpath >/dev/null 2>&1; then
+  WIN_EV=$(wslpath "$(cmd.exe /c 'echo %USERPROFILE%' 2>/dev/null | tr -d '\r')")
+  ANAHTAR_KLASORU=$WIN_EV/.tauri
+else
+  ANAHTAR_KLASORU=$HOME/.tauri
+fi
+
+# Docker: WSL entegrasyonu aciksa dogrudan `docker` (Linux yollari), degilse
+# Windows'taki docker.exe (Windows yollari ister).
 if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
   DOCKER=docker
   yol() { echo "$1"; }
-  ANAHTAR_KLASORU=${ZSEN_ANAHTAR_KLASORU:-$HOME/.tauri}
 else
   DOCKER="/mnt/c/Program Files/Docker/Docker/resources/bin/docker.exe"
   yol() { wslpath -w "$1"; }
-  WIN_EV=$(wslpath "$(cmd.exe /c 'echo %USERPROFILE%' 2>/dev/null | tr -d '\r')")
-  ANAHTAR_KLASORU=${ZSEN_ANAHTAR_KLASORU:-$WIN_EV/.tauri}
 fi
 "$DOCKER" info >/dev/null 2>&1 || { echo "Docker Desktop calismiyor. Acip tekrar dene."; exit 1; }
 
