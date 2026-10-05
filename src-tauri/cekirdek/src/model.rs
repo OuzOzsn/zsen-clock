@@ -231,6 +231,46 @@ impl Default for EtkinlikDosyasi {
     }
 }
 
+impl EtkinlikDosyasi {
+    /// Yalnizca buyuk/kucuk harfle ayrisan kategorileri tek kategoride
+    /// birlestirir (ilk gorulen kazanir) ve etkinlikleri ona tasir.
+    ///
+    /// Arayuz kategori secimini buyuk/kucuk harfe duyarsiz gosteriyor, ama
+    /// otomatik kategori olusturma eskiden duyarliydi (bkz. komutlar.rs
+    /// `etkinlik_kaydet`/`program_etkinlikleri_yaz`): "ders" varken "DERS"
+    /// girilince ikinci bir kategori dogardi ve secim ekraninda ikisi de
+    /// "secili" gorunurdu. Acilista calistirilir; eski dosyalardaki kopyalari
+    /// da temizler.
+    pub fn kategorileri_birlestir(&mut self) {
+        let mut kanonik: Vec<Kategori> = Vec::new();
+        let mut esleme: std::collections::HashMap<String, String> =
+            std::collections::HashMap::new();
+        for k in self.kategoriler.drain(..) {
+            match kanonik
+                .iter()
+                .find(|m: &&Kategori| m.ad.to_lowercase() == k.ad.to_lowercase())
+            {
+                Some(ilk) => {
+                    esleme.insert(k.ad.clone(), ilk.ad.clone());
+                }
+                None => {
+                    esleme.insert(k.ad.clone(), k.ad.clone());
+                    kanonik.push(k);
+                }
+            }
+        }
+        self.kategoriler = kanonik;
+
+        if esleme.iter().any(|(eski, yeni)| eski != yeni) {
+            for e in self.etkinlikler.iter_mut() {
+                if let Some(yeni) = esleme.get(&e.kategori) {
+                    e.kategori = yeni.clone();
+                }
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod testler {
     use super::*;
@@ -296,5 +336,48 @@ mod testler {
             !kopya.program_serisi_mi("p1"),
             "gune ozel kopya seri sayilmamali"
         );
+    }
+
+    fn etkinlik(id: &str, kategori: &str) -> Etkinlik {
+        serde_json::from_str(&format!(
+            r#"{{ "id": "{id}", "baslik": "x", "kategori": "{kategori}",
+                  "baslangic": "2026-09-18T18:00:00" }}"#
+        ))
+        .expect("okunmali")
+    }
+
+    #[test]
+    fn buyuk_kucuk_harf_farkli_kategoriler_birlesir() {
+        let mut d = EtkinlikDosyasi {
+            surum: SEMA_SURUMU,
+            kategoriler: vec![
+                Kategori::yeni("ders", "#6aa9d6", "kitap"),
+                Kategori::yeni("DERS", "#c9a227", "etiket"),
+            ],
+            etkinlikler: vec![etkinlik("e1", "DERS"), etkinlik("e2", "ders")],
+        };
+
+        d.kategorileri_birlestir();
+
+        assert_eq!(d.kategoriler.len(), 1, "tek kategori kalmali: {:?}", d.kategoriler);
+        assert_eq!(d.kategoriler[0].ad, "ders", "ilk gorulen kazanmali");
+        assert!(d.etkinlikler.iter().all(|e| e.kategori == "ders"));
+    }
+
+    #[test]
+    fn farkli_kategoriler_birlesmez() {
+        let mut d = EtkinlikDosyasi {
+            surum: SEMA_SURUMU,
+            kategoriler: vec![
+                Kategori::yeni("ders", "#6aa9d6", "kitap"),
+                Kategori::yeni("spor", "#7fa356", "kosu"),
+            ],
+            etkinlikler: vec![etkinlik("e1", "ders")],
+        };
+
+        d.kategorileri_birlestir();
+
+        assert_eq!(d.kategoriler.len(), 2);
+        assert_eq!(d.etkinlikler[0].kategori, "ders");
     }
 }

@@ -42,7 +42,14 @@ pub struct Paylasilan {
 
 impl Paylasilan {
     pub fn yukle() -> Self {
-        let (dosya, uyari_e) = depo::etkinlikleri_oku();
+        let (mut dosya, uyari_e) = depo::etkinlikleri_oku();
+        let onceki_kategori_sayisi = dosya.kategoriler.len();
+        dosya.kategorileri_birlestir();
+        // Birlestirme bir seyi degistirdiyse hemen diske yaz ki kullanici
+        // herhangi bir kayit yapmadan da kopya kategoriler gitsin.
+        if dosya.kategoriler.len() != onceki_kategori_sayisi {
+            let _ = depo::etkinlikleri_yaz(&dosya);
+        }
         let (programlar, uyari_p) = depo::programlari_oku();
         let (ayarlar, uyari_a) = depo::ayarlari_oku();
         let durum = depo::durumu_oku();

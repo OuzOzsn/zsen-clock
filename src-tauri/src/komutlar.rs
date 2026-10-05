@@ -60,6 +60,24 @@ pub fn etkinlik_kaydet(
 
     {
         let mut dosya = durum.dosya.lock().map_err(|_| "kilit alinamadi")?;
+
+        // Ayni kategori buyuk/kucuk harf farkiyla zaten varsa onun adini
+        // kullan - yoksa "ders" yazilan bir ekrandan "Ders" girilince ikinci
+        // bir kategori dogar ve secim ekraninda ikisi de secili gorunur
+        // (KategoriSecici buyuk/kucuk harfe duyarsiz karsilastiriyor).
+        match normallestirilmis_kategori(&dosya.kategoriler, &etkinlik.kategori) {
+            Some(mevcut_ad) => etkinlik.kategori = mevcut_ad,
+            None => {
+                let renk = sirasi_gelen_renk(dosya.kategoriler.len());
+                dosya.kategoriler.push(Kategori {
+                    ad: etkinlik.kategori.clone(),
+                    renk,
+                    ikon: None,
+                    aciklama: String::new(),
+                });
+            }
+        }
+
         match dosya.etkinlikler.iter_mut().find(|e| e.id == etkinlik.id) {
             Some(mevcut) => {
                 // Olusturulma zamanini koru.
@@ -67,17 +85,6 @@ pub fn etkinlik_kaydet(
                 *mevcut = etkinlik.clone();
             }
             None => dosya.etkinlikler.push(etkinlik.clone()),
-        }
-
-        // Yeni bir kategori adi girildiyse listeye ekle ki renk alsin.
-        if !dosya.kategoriler.iter().any(|k| k.ad == etkinlik.kategori) {
-            let renk = sirasi_gelen_renk(dosya.kategoriler.len());
-            dosya.kategoriler.push(Kategori {
-                ad: etkinlik.kategori.clone(),
-                renk,
-                ikon: None,
-                aciklama: String::new(),
-            });
         }
     }
 
@@ -447,15 +454,19 @@ pub fn program_etkinlikleri_yaz(
             e.olusturuldu = eski_olusturuldu.get(&e.id).copied().or(Some(simdi));
             e.guncellendi = Some(simdi);
 
-            // Yeni kategori adi girildiyse listeye ekle ki renk alsin.
-            if !dosya.kategoriler.iter().any(|k| k.ad == e.kategori) {
-                let renk = sirasi_gelen_renk(dosya.kategoriler.len());
-                dosya.kategoriler.push(Kategori {
-                    ad: e.kategori.clone(),
-                    renk,
-                    ikon: None,
-                    aciklama: String::new(),
-                });
+            // Ayni kategori buyuk/kucuk harf farkiyla zaten varsa onun adini
+            // kullan - yoksa yeni kategori olarak ekle ki renk alsin.
+            match normallestirilmis_kategori(&dosya.kategoriler, &e.kategori) {
+                Some(mevcut_ad) => e.kategori = mevcut_ad,
+                None => {
+                    let renk = sirasi_gelen_renk(dosya.kategoriler.len());
+                    dosya.kategoriler.push(Kategori {
+                        ad: e.kategori.clone(),
+                        renk,
+                        ikon: None,
+                        aciklama: String::new(),
+                    });
+                }
             }
             dosya.etkinlikler.push(e);
         }
@@ -1074,6 +1085,16 @@ fn zaman_coz(s: &str) -> Sonuc<NaiveDateTime> {
         .map_err(|e| format!("zaman cozulemedi ({s}): {e}"))
 }
 
+/// Verilen adla buyuk/kucuk harfe duyarsiz eslesen kategorinin GERCEK (kayitli)
+/// adini dondurur; yoksa None. Otomatik kategori olusturmada "ders" varken
+/// "Ders" veya "DERS" girilince kopya kategori dogmasin diye kullanilir.
+fn normallestirilmis_kategori(kategoriler: &[Kategori], ad: &str) -> Option<String> {
+    kategoriler
+        .iter()
+        .find(|k| k.ad.to_lowercase() == ad.to_lowercase())
+        .map(|k| k.ad.clone())
+}
+
 /// Yeni kategoriler tokens.css'teki kategori paletinden sirayla renk alir.
 fn sirasi_gelen_renk(sira: usize) -> String {
     const PALET: [&str; 8] = [
@@ -1112,6 +1133,16 @@ mod testler {
     fn bozuk_anahtar_hata_verir() {
         assert!(anahtari_coz("bozuk").is_err());
         assert!(anahtari_coz("a@bozuk#0").is_err());
+    }
+
+    #[test]
+    fn normallestirilmis_kategori_buyuk_kucuk_harfi_yok_sayar() {
+        let kategoriler = vec![Kategori::yeni("ders", "#6aa9d6", "kitap")];
+        assert_eq!(
+            normallestirilmis_kategori(&kategoriler, "DERS"),
+            Some("ders".to_string()),
+        );
+        assert_eq!(normallestirilmis_kategori(&kategoriler, "spor"), None);
     }
 
     #[test]

@@ -102,6 +102,10 @@
         { etkinlik: kayit, baslangic: isaretAni, bitis: null, tamamlandi: yapildi, renk: '' },
         !yapildi,
       );
+      // Taslagi da guncelle: sonradan "Kaydet"e basilirsa taslagin eski
+      // (isaretlenmemis) tamamlananlar listesi az once yazilani geri almasin.
+      const guncel = depo.etkinlikler.find((e) => e.id === taslak.id);
+      if (guncel) taslak.tamamlananlar = guncel.tamamlananlar;
     } catch (e) {
       hata = `İşaretlenemedi: ${e}`;
     }
